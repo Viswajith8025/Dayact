@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom'
 import { Button } from '../components/Button'
 import { ConnectionGate } from '../components/ConnectionGate'
 import { Input } from '../components/Input'
+import { ThemeToggle } from '../components/ThemeToggle'
 import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/supabase'
 
@@ -67,6 +68,7 @@ export function LoginPage() {
           <p className="typo-subhead text-[var(--color-text-muted)]">
             Sign in with the account your team owner created for you.
           </p>
+          <ThemeToggle />
         </header>
 
         <ConnectionGate>

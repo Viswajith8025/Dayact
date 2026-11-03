@@ -554,7 +554,9 @@ export function TodayPage() {
       {loading ? (
         <ListSkeleton />
       ) : sorted.length === 0 ? (
-        <p className="typo-subhead text-[var(--color-text-muted)]">{emptyCopy}</p>
+        <div className="empty-state-card">
+          <p>{emptyCopy}</p>
+        </div>
       ) : (
         <ul key={selectedDate} className="grouped-list motion-stagger">
           {sorted.map((activity, index) => (

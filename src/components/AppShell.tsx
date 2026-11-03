@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { CalendarDays, ListChecks, LogOut, Menu, Trophy, X } from 'lucide-react'
 import { AchievementCelebrations } from './AchievementCelebrations'
 import { ConnectionGate } from './ConnectionGate'
+import { ThemeToggle } from './ThemeToggle'
 import { useAuth } from '../lib/auth'
 import {
   ACTIVITIES_CHANGED_EVENT,
@@ -97,7 +98,8 @@ function SessionFooter({ layout }: { layout: 'sidebar' | 'header-menu' }) {
 
   if (layout === 'sidebar') {
     return (
-      <div className="mt-auto border-t border-[var(--color-separator)] pt-[var(--space-4)]">
+      <div className="mt-auto space-y-[var(--space-4)] border-t border-[var(--color-separator)] pt-[var(--space-4)]">
+        <ThemeToggle />
         <div className="flex items-center justify-between gap-[var(--space-2)]">
           <span className="typo-footnote text-[var(--color-text-muted)] tabular-nums">{APP_VERSION}</span>
           <button
@@ -115,7 +117,8 @@ function SessionFooter({ layout }: { layout: 'sidebar' | 'header-menu' }) {
   }
 
   return (
-    <div className="flex flex-col gap-[var(--space-2)] p-[var(--space-3)]">
+    <div className="flex w-56 flex-col gap-[var(--space-3)] p-[var(--space-3)]">
+      <ThemeToggle />
       <span className="typo-footnote text-[var(--color-text-muted)] tabular-nums">{APP_VERSION}</span>
       <button
         type="button"
@@ -220,7 +223,7 @@ export function AppShell() {
                       aria-label="Close menu"
                       onClick={() => setMobileMenuOpen(false)}
                     />
-                    <div className="menu-popover menu-popover--motion absolute left-0 top-full z-20 mt-[var(--space-2)] w-48">
+                    <div className="menu-popover menu-popover--motion absolute left-0 top-full z-20 mt-[var(--space-2)] w-56">
                       <SessionFooter layout="header-menu" />
                     </div>
                   </>
@@ -257,7 +260,7 @@ export function AppShell() {
                       aria-label="Close menu"
                       onClick={() => setMobileMenuOpen(false)}
                     />
-                    <div className="menu-popover menu-popover--motion absolute right-0 top-full z-20 mt-[var(--space-2)] w-48">
+                    <div className="menu-popover menu-popover--motion absolute right-0 top-full z-20 mt-[var(--space-2)] w-56">
                       <SessionFooter layout="header-menu" />
                     </div>
                   </>
