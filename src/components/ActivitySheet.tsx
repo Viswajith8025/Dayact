@@ -68,14 +68,32 @@ export function ActivitySheet({
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault()
-        onClose()
+        requestClose()
       }
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [open, onClose])
+  }, [open, title, notes, plannedFor, followUpOn, initial, defaultPlannedFor, onClose])
 
   if (!open) return null
+
+  function isDirty(): boolean {
+    const baseTitle = (initial?.title ?? '').trim()
+    const baseNotes = (initial?.notes ?? '').trim()
+    const basePlanned = initial?.planned_for ?? defaultPlannedFor
+    const baseFollow = initial?.follow_up_on ?? ''
+    return (
+      title.trim() !== baseTitle ||
+      notes.trim() !== baseNotes ||
+      plannedFor !== basePlanned ||
+      followUpOn !== baseFollow
+    )
+  }
+
+  function requestClose() {
+    if (isDirty() && !window.confirm('Discard your changes?')) return
+    onClose()
+  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -135,7 +153,7 @@ export function ActivitySheet({
         role="dialog"
         aria-modal="true"
         aria-labelledby="activity-sheet-title"
-        onClick={onClose}
+        onClick={() => requestClose()}
       >
         <form
           className="sheet-panel space-y-[var(--space-5)]"
@@ -233,7 +251,7 @@ export function ActivitySheet({
         ) : null}
 
         <div className="flex flex-col gap-[var(--space-3)] sm:flex-row">
-          <Button type="button" variant="secondary" sheet className="sm:flex-1" onClick={onClose}>
+          <Button type="button" variant="secondary" sheet className="sm:flex-1" onClick={() => requestClose()}>
             Cancel
           </Button>
           <Button type="submit" sheet className="sm:flex-1" loading={saving}>

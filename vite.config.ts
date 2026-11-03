@@ -170,8 +170,8 @@ export default defineConfig(({ mode }) => {
         short_name: 'Dayact',
         display: 'standalone',
         start_url: '/',
-        theme_color: '#0a7c74',
-        background_color: '#f5f5f7',
+        theme_color: '#f2f2f5',
+        background_color: '#f2f2f5',
         icons: [
           {
             src: 'icons/icon-192.png',

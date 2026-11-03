@@ -57,7 +57,7 @@ The **Suggest titles** button uses [Google Gemini](https://ai.google.dev/). The 
 
 **Production:** Supabase Dashboard → **Edge Functions → Secrets** → add `GEMINI_API_KEY` (same name). Redeploy `suggest-activity` if you change the function code.
 
-Use a key from **Google AI Studio** (`AIza…`). If you see auth errors, create a new key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey).
+Use a key from **Google AI Studio** (`AIza…` or `AQ.…`). If you see auth errors, create a new key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey).
 
 ## Automated tests (Playwright)
 
