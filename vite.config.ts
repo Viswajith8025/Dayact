@@ -8,7 +8,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 const SYSTEM_PROMPT =
   'Suggest daily activity titles for a two-person shared planner. Return JSON only: {"suggestions":["title1","title2","title3"]}. Each title at most 120 characters, sentence case, specific and actionable, no emoji.'
 
-const GEMINI_MODEL = 'gemini-2.0-flash'
+const GEMINI_MODELS = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-3.5-flash-lite']
 
 function readJsonBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -21,8 +21,8 @@ function readJsonBody(req: IncomingMessage): Promise<string> {
   })
 }
 
-async function fetchGeminiSuggestions(apiKey: string, hint: string) {
-  const url = `https://generativeai.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`
+async function fetchGeminiWithModel(apiKey: string, hint: string, model: string) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`
   const userText = hint.trim() || 'Suggest three useful things to plan for today.'
 
   const geminiRes = await fetch(url, {
@@ -36,7 +36,6 @@ async function fetchGeminiSuggestions(apiKey: string, hint: string) {
         },
       ],
       generationConfig: {
-        temperature: 0.6,
         maxOutputTokens: 512,
         responseMimeType: 'application/json',
       },
@@ -45,19 +44,23 @@ async function fetchGeminiSuggestions(apiKey: string, hint: string) {
 
   if (!geminiRes.ok) {
     const detail = (await geminiRes.text()).slice(0, 240)
+    if (geminiRes.status === 404) {
+      return { retry: true, error: `Model ${model} unavailable.` }
+    }
     if (geminiRes.status === 400 || geminiRes.status === 403) {
       return {
+        retry: false,
         error:
           'Invalid or unauthorized Gemini key. Use an API key from Google AI Studio (aistudio.google.com/apikey).',
       }
     }
-    return { error: `Gemini request failed (${geminiRes.status}). ${detail}` }
+    return { retry: false, error: `Gemini request failed (${geminiRes.status}). ${detail}` }
   }
 
   const geminiData = await geminiRes.json()
   const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text
   if (typeof text !== 'string') {
-    return { error: 'Could not read AI response. Try again.' }
+    return { retry: false, error: 'Could not read AI response. Try again.' }
   }
 
   try {
@@ -71,13 +74,26 @@ async function fetchGeminiSuggestions(apiKey: string, hint: string) {
       : []
 
     if (suggestions.length === 0) {
-      return { error: 'No suggestions returned. Try again.' }
+      return { retry: false, error: 'No suggestions returned. Try again.' }
     }
 
-    return { suggestions }
+    return { retry: false, suggestions }
   } catch {
-    return { error: 'Could not read AI response. Try again.' }
+    return { retry: false, error: 'Could not read AI response. Try again.' }
   }
+}
+
+async function fetchGeminiSuggestions(apiKey: string, hint: string) {
+  let lastError = 'Could not reach AI. Try again.'
+  for (const model of GEMINI_MODELS) {
+    const result = await fetchGeminiWithModel(apiKey, hint, model)
+    if (result.suggestions) {
+      return { suggestions: result.suggestions }
+    }
+    if (result.error) lastError = result.error
+    if (!result.retry) break
+  }
+  return { error: lastError }
 }
 
 function geminiDevApiPlugin(mode: string): Plugin {
@@ -133,7 +149,15 @@ function sendJson(res: ServerResponse, status: number, body: unknown) {
   res.end(JSON.stringify(body))
 }
 
-export default defineConfig(({ mode }) => ({
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+  for (const [key, value] of Object.entries(env)) {
+    if (key.startsWith('VITE_') || key === 'GEMINI_API_KEY') {
+      process.env[key] = value
+    }
+  }
+
+  return {
   plugins: [
     react(),
     tailwindcss(),
@@ -180,4 +204,5 @@ export default defineConfig(({ mode }) => ({
       },
     }),
   ],
-}))
+  }
+})

@@ -45,6 +45,7 @@ type ActivityRowProps = {
   isOwn: boolean
   onToggleDone: (activity: ActivityWithOwner) => void
   onSkip: (activity: ActivityWithOwner) => void
+  onUnskip: (activity: ActivityWithOwner) => void
   onEdit: (activity: ActivityWithOwner) => void
   onDelete: (activity: ActivityWithOwner) => void
 }
@@ -54,6 +55,7 @@ function ActivityRow({
   isOwn,
   onToggleDone,
   onSkip,
+  onUnskip,
   onEdit,
   onDelete,
 }: ActivityRowProps) {
@@ -84,6 +86,18 @@ function ActivityRow({
       window.innerWidth - menuWidth - 8,
     )
     setMenuPos({ top, left })
+  }, [menuOpen])
+
+  useEffect(() => {
+    if (!menuOpen) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setMenuOpen(false)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
   }, [menuOpen])
 
   return (
@@ -175,6 +189,17 @@ function ActivityRow({
                       Skip
                     </button>
                   ) : null}
+                  {activity.status === 'skipped' ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuOpen(false)
+                        onUnskip(activity)
+                      }}
+                    >
+                      Unskip
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     className="menu-popover__destructive"
@@ -218,6 +243,7 @@ export function TodayPage() {
   const [profileLoading, setProfileLoading] = useState(true)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editing, setEditing] = useState<ActivityWithOwner | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<ActivityWithOwner | null>(null)
   const toggleInFlight = useRef(new Set<string>())
 
   useEffect(() => {
@@ -341,8 +367,21 @@ export function TodayPage() {
     notifyActivitiesChanged()
   }
 
-  async function handleDelete(activity: ActivityWithOwner) {
-    if (!window.confirm("Delete this activity? This can't be undone.")) return
+  async function handleUnskip(activity: ActivityWithOwner) {
+    const result = await setStatus(activity.id, 'planned', null)
+    if (result.error) {
+      setError(result.error)
+      return
+    }
+    const updated = result.data!
+    setActivities((prev) => prev.map((row) => (row.id === updated.id ? updated : row)))
+    notifyActivitiesChanged()
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return
+    const activity = deleteTarget
+    setDeleteTarget(null)
     const result = await remove(activity.id)
     if (result.error) {
       setError(result.error)
@@ -350,6 +389,10 @@ export function TodayPage() {
     }
     setActivities((prev) => prev.filter((row) => row.id !== activity.id))
     notifyActivitiesChanged()
+  }
+
+  async function handleDelete(activity: ActivityWithOwner) {
+    setDeleteTarget(activity)
   }
 
   async function handleSave(payload: {
@@ -497,6 +540,7 @@ export function TodayPage() {
               isOwn={activity.user_id === user?.id}
               onToggleDone={handleToggleDone}
               onSkip={handleSkip}
+              onUnskip={handleUnskip}
               onEdit={(row) => {
                 setEditing(row)
                 setSheetOpen(true)
@@ -518,6 +562,44 @@ export function TodayPage() {
         }}
         onSave={handleSave}
       />
+
+      {deleteTarget ? (
+        <div
+          className="sheet-backdrop z-50"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="delete-activity-title"
+        >
+          <div className="sheet-panel w-full max-w-sm space-y-[var(--space-5)]">
+            <h2 id="delete-activity-title" className="typo-title text-[var(--color-text)]">
+              Delete this activity?
+            </h2>
+            <p className="typo-subhead text-[var(--color-text-muted)]">
+              This can&apos;t be undone.
+            </p>
+            <div className="flex flex-col gap-[var(--space-3)] sm:flex-row">
+              <Button
+                type="button"
+                variant="secondary"
+                sheet
+                className="sm:flex-1"
+                onClick={() => setDeleteTarget(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                sheet
+                className="sm:flex-1"
+                onClick={() => void confirmDelete()}
+              >
+                Delete
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   )
 }

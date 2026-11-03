@@ -134,7 +134,10 @@ export function ActivitySheet({
           name="title"
           maxLength={120}
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          onChange={(e) => {
+            setTitle(e.target.value)
+            if (error) setError(null)
+          }}
         />
 
         <div className="space-y-[var(--space-2)]">

@@ -12,7 +12,14 @@ function loadDotEnv() {
       const key = trimmed.slice(0, eq).trim()
       const value = trimmed.slice(eq + 1).trim()
       if (key) {
-        process.env[key] = value
+        if (process.env.CI && key.startsWith('DAYACT_')) continue
+        if (
+          key.startsWith('VITE_') ||
+          key === 'GEMINI_API_KEY' ||
+          key.startsWith('DAYACT_')
+        ) {
+          process.env[key] = value
+        }
       }
     }
   } catch {

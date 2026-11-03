@@ -9,7 +9,7 @@ const corsHeaders = {
 const SYSTEM_PROMPT =
   'Suggest daily activity titles for a two-person shared planner. Return JSON only: {"suggestions":["title1","title2","title3"]}. Each title at most 120 characters, sentence case, specific and actionable, no emoji.'
 
-const GEMINI_MODEL = "gemini-3.8-flash"
+const GEMINI_MODELS = ["gemini-3.8-flash", "gemini-2.5-flash", "gemini-3.5-flash-lite"]
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -18,9 +18,9 @@ function json(body: unknown, status = 200) {
   })
 }
 
-async function fetchGeminiSuggestions(apiKey: string, hint: string) {
+async function fetchGeminiWithModel(apiKey: string, hint: string, model: string) {
   const url =
-    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`
   const userText = hint.trim() || "Suggest three useful things to plan for today."
 
   const geminiRes = await fetch(url, {
@@ -42,19 +42,26 @@ async function fetchGeminiSuggestions(apiKey: string, hint: string) {
 
   if (!geminiRes.ok) {
     const detail = (await geminiRes.text()).slice(0, 200)
+    if (geminiRes.status === 404) {
+      return { retry: true as const, error: `Model ${model} unavailable.` }
+    }
     if (geminiRes.status === 400 || geminiRes.status === 403) {
       return {
+        retry: false as const,
         error:
           "Invalid or unauthorized Gemini key. Set GEMINI_API_KEY from Google AI Studio.",
       }
     }
-    return { error: `Gemini request failed (${geminiRes.status}). ${detail}` }
+    return {
+      retry: false as const,
+      error: `Gemini request failed (${geminiRes.status}). ${detail}`,
+    }
   }
 
   const geminiData = await geminiRes.json()
   const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text
   if (typeof text !== "string") {
-    return { error: "Could not read AI response. Try again." }
+    return { retry: false as const, error: "Could not read AI response. Try again." }
   }
 
   try {
@@ -68,13 +75,26 @@ async function fetchGeminiSuggestions(apiKey: string, hint: string) {
       : []
 
     if (suggestions.length === 0) {
-      return { error: "No suggestions returned. Try again." }
+      return { retry: false as const, error: "No suggestions returned. Try again." }
     }
 
-    return { suggestions }
+    return { retry: false as const, suggestions }
   } catch {
-    return { error: "Could not read AI response. Try again." }
+    return { retry: false as const, error: "Could not read AI response. Try again." }
   }
+}
+
+async function fetchGeminiSuggestions(apiKey: string, hint: string) {
+  let lastError = "Could not reach AI. Try again."
+  for (const model of GEMINI_MODELS) {
+    const result = await fetchGeminiWithModel(apiKey, hint, model)
+    if ("suggestions" in result && result.suggestions) {
+      return { suggestions: result.suggestions }
+    }
+    if (result.error) lastError = result.error
+    if (!result.retry) break
+  }
+  return { error: lastError }
 }
 
 Deno.serve(async (req) => {
