@@ -1,6 +1,6 @@
 import { addDays, format } from 'date-fns'
 import { ChevronLeft, ChevronRight, Flag, MoreVertical } from 'lucide-react'
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ActivitySheet } from '../components/ActivitySheet'
 import { Button } from '../components/Button'
@@ -43,6 +43,8 @@ function ListSkeleton() {
 type ActivityRowProps = {
   activity: ActivityWithOwner
   isOwn: boolean
+  exiting?: boolean
+  staggerIndex: number
   onToggleDone: (activity: ActivityWithOwner) => void
   onSkip: (activity: ActivityWithOwner) => void
   onUnskip: (activity: ActivityWithOwner) => void
@@ -53,6 +55,8 @@ type ActivityRowProps = {
 function ActivityRow({
   activity,
   isOwn,
+  exiting = false,
+  staggerIndex,
   onToggleDone,
   onSkip,
   onUnskip,
@@ -101,7 +105,10 @@ function ActivityRow({
   }, [menuOpen])
 
   return (
-    <li className={muted ? 'opacity-80' : undefined}>
+    <li
+      className={`${muted && !exiting ? 'opacity-80' : ''} ${exiting ? 'motion-exit' : ''}`.trim() || undefined}
+      style={{ '--stagger-index': staggerIndex } as CSSProperties}
+    >
       <div className="grouped-row">
         {isOwn ? (
           <button
@@ -166,7 +173,7 @@ function ActivityRow({
                   onClick={() => setMenuOpen(false)}
                 />
                 <div
-                  className="menu-popover fixed z-40 min-w-36"
+                  className="menu-popover menu-popover--motion fixed z-40 min-w-36"
                   style={{ top: menuPos.top, left: menuPos.left }}
                 >
                   <button
@@ -244,6 +251,7 @@ export function TodayPage() {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editing, setEditing] = useState<ActivityWithOwner | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<ActivityWithOwner | null>(null)
+  const [exitingId, setExitingId] = useState<string | null>(null)
   const toggleInFlight = useRef(new Set<string>())
 
   useEffect(() => {
@@ -382,7 +390,10 @@ export function TodayPage() {
     if (!deleteTarget) return
     const activity = deleteTarget
     setDeleteTarget(null)
+    setExitingId(activity.id)
+    await new Promise((resolve) => window.setTimeout(resolve, 260))
     const result = await remove(activity.id)
+    setExitingId(null)
     if (result.error) {
       setError(result.error)
       return
@@ -532,12 +543,14 @@ export function TodayPage() {
       ) : sorted.length === 0 ? (
         <p className="typo-subhead text-[var(--color-text-muted)]">{emptyCopy}</p>
       ) : (
-        <ul className="grouped-list">
-          {sorted.map((activity) => (
+        <ul key={selectedDate} className="grouped-list motion-stagger">
+          {sorted.map((activity, index) => (
             <ActivityRow
               key={activity.id}
               activity={activity}
               isOwn={activity.user_id === user?.id}
+              exiting={exitingId === activity.id}
+              staggerIndex={index}
               onToggleDone={handleToggleDone}
               onSkip={handleSkip}
               onUnskip={handleUnskip}
@@ -570,7 +583,7 @@ export function TodayPage() {
           aria-modal="true"
           aria-labelledby="delete-activity-title"
         >
-          <div className="sheet-panel w-full max-w-sm space-y-[var(--space-5)]">
+          <div className="sheet-panel w-full max-w-sm space-y-[var(--space-5)] alert-panel-pop">
             <h2 id="delete-activity-title" className="typo-title text-[var(--color-text)]">
               Delete this activity?
             </h2>

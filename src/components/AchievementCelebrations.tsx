@@ -77,7 +77,7 @@ export function AchievementCelebrations() {
       aria-live="polite"
     >
       {toasts.map((toast) => (
-        <div key={toast.id} className="celebration-toast flex items-start gap-[var(--space-4)]">
+        <div key={toast.id} className="celebration-toast motion-pop flex items-start gap-[var(--space-4)]">
           <MedalIcon />
           <div className="min-w-0">
             <p className="typo-headline text-[var(--color-text)]">{toast.title}</p>

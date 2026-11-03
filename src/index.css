@@ -680,3 +680,141 @@ button,
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
+
+/* --- Shared motion utilities (v1.3) --- */
+
+@keyframes motion-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes motion-exit {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes motion-pop {
+  from {
+    opacity: 0.6;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes menu-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.motion-enter {
+  animation: motion-enter var(--duration-state) var(--ease-motion) both;
+}
+
+.motion-page-enter {
+  animation: motion-enter var(--duration-state) var(--ease-motion) both;
+}
+
+.motion-stagger > * {
+  animation: motion-enter var(--duration-state) var(--ease-motion) both;
+  animation-delay: calc(min(var(--stagger-index, 0), 8) * 45ms);
+}
+
+.motion-exit {
+  animation: motion-exit 250ms var(--ease-motion) forwards;
+  pointer-events: none;
+}
+
+.motion-pop {
+  animation: motion-pop 180ms var(--ease-motion) both;
+}
+
+.menu-popover--motion {
+  transform-origin: top right;
+  animation: menu-pop-in var(--duration-state) var(--ease-motion) both;
+}
+
+.alert-panel-pop {
+  animation: menu-pop-in var(--duration-state) var(--ease-motion) both;
+}
+
+.tab-nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: 6px;
+  left: 50%;
+  width: 1.25rem;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--color-accent);
+  transform: translateX(-50%) scaleX(0);
+  opacity: 0;
+  transition:
+    transform var(--duration-state) var(--ease-motion),
+    opacity var(--duration-state) var(--ease-motion);
+}
+
+.tab-nav-link--active::after {
+  transform: translateX(-50%) scaleX(1);
+  opacity: 1;
+}
+
+.suggest-shimmer {
+  height: 0.375rem;
+  border-radius: var(--radius-control);
+  background: linear-gradient(
+    90deg,
+    var(--color-accent-tint) 0%,
+    rgba(10, 124, 116, 0.35) 50%,
+    var(--color-accent-tint) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-pulse 1.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-enter,
+  .motion-page-enter,
+  .motion-stagger > *,
+  .motion-exit,
+  .motion-pop,
+  .menu-popover--motion,
+  .alert-panel-pop {
+    animation: none;
+    transform: none;
+    opacity: 1;
+  }
+
+  .tab-nav-link::after {
+    transition: none;
+  }
+
+  .tab-nav-link--active::after {
+    transform: translateX(-50%) scaleX(1);
+    opacity: 1;
+  }
+
+  .suggest-shimmer {
+    animation: none;
+  }
+}

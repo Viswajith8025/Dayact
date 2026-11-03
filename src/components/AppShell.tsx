@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { CalendarDays, ListChecks, LogOut, Menu, Trophy, X } from 'lucide-react'
 import { AchievementCelebrations } from './AchievementCelebrations'
@@ -31,21 +31,25 @@ function navLinkClass(isActive: boolean, layout: 'sidebar' | 'tabs') {
 
   const state = isActive
     ? layout === 'tabs'
-      ? 'text-[var(--color-accent)]'
+      ? 'text-[var(--color-accent)] tab-nav-link--active'
       : 'bg-[var(--color-accent-tint)] text-[var(--color-accent)] font-semibold'
     : layout === 'tabs'
       ? ''
       : 'text-[var(--color-text-muted)]'
 
-  return `${base} ${state}`
+  const tabClass = layout === 'tabs' ? ' tab-nav-link' : ''
+
+  return `${base}${tabClass} ${state}`
 }
 
 function AppNav({
   layout,
   followUpBadge,
+  badgePop,
 }: {
   layout: 'sidebar' | 'tabs'
   followUpBadge: number
+  badgePop: boolean
 }) {
   return (
     <>
@@ -58,7 +62,7 @@ function AppNav({
               {label}
               {showBadge ? (
                 <span
-                  className="tabular-nums inline-flex min-h-5 min-w-5 items-center justify-center rounded-[var(--radius-control)] bg-[var(--color-accent)] px-1.5 typo-caption text-[var(--color-accent-foreground)]"
+                  className={`tabular-nums inline-flex min-h-5 min-w-5 items-center justify-center rounded-[var(--radius-control)] bg-[var(--color-accent)] px-1.5 typo-caption text-[var(--color-accent-foreground)]${badgePop ? ' motion-pop' : ''}`}
                   aria-label={
                     followUpBadge === 1
                       ? '1 follow-up due'
@@ -126,6 +130,8 @@ export function AppShell() {
   const { user } = useAuth()
   const location = useLocation()
   const [followUpBadge, setFollowUpBadge] = useState(0)
+  const [badgePop, setBadgePop] = useState(false)
+  const prevBadgeRef = useRef(0)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [compactTitle, setCompactTitle] = useState(false)
 
@@ -138,7 +144,13 @@ export function AppShell() {
     }
     const result = await countOwnFollowUpBadge(user.id)
     if (!result.error) {
-      setFollowUpBadge(result.data ?? 0)
+      const next = result.data ?? 0
+      setFollowUpBadge(next)
+      if (next > prevBadgeRef.current) {
+        setBadgePop(true)
+        window.setTimeout(() => setBadgePop(false), 200)
+      }
+      prevBadgeRef.current = next
     }
   }, [user])
 
@@ -172,7 +184,7 @@ export function AppShell() {
       <aside className="hidden w-56 shrink-0 flex-col bg-[var(--color-bg)] px-[var(--space-4)] py-[var(--space-6)] md:flex">
         <p className="mb-[var(--space-5)] typo-title text-[var(--color-text)]">Dayact</p>
         <nav className="flex flex-col gap-[var(--space-1)]" aria-label="Main">
-          <AppNav layout="sidebar" followUpBadge={followUpBadge} />
+          <AppNav layout="sidebar" followUpBadge={followUpBadge} badgePop={badgePop} />
         </nav>
         <SessionFooter layout="sidebar" />
       </aside>
@@ -252,7 +264,9 @@ export function AppShell() {
         </header>
         <main className="mx-auto w-full max-w-[var(--content-max)] flex-1 px-[var(--space-page)] pb-[calc(var(--nav-height)+env(safe-area-inset-bottom)+var(--space-6))] pt-[var(--space-4)] md:pb-[var(--space-section)] md:pt-[var(--space-section)]">
           <ConnectionGate>
-            <Outlet />
+            <div key={location.pathname} className="motion-page-enter">
+              <Outlet />
+            </div>
           </ConnectionGate>
         </main>
 
@@ -261,7 +275,7 @@ export function AppShell() {
           style={{ minHeight: 'calc(var(--nav-height) + env(safe-area-inset-bottom))' }}
           aria-label="Main"
         >
-          <AppNav layout="tabs" followUpBadge={followUpBadge} />
+          <AppNav layout="tabs" followUpBadge={followUpBadge} badgePop={badgePop} />
         </nav>
       </div>
     </div>

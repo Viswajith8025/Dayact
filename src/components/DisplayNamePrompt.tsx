@@ -58,7 +58,7 @@ export function DisplayNamePrompt({ userId, onSaved, onDismiss }: DisplayNamePro
       aria-labelledby="display-name-title"
     >
       <form
-        className="sheet-panel w-full max-w-md space-y-[var(--space-5)]"
+        className="sheet-panel w-full max-w-md space-y-[var(--space-5)] alert-panel-pop"
         onSubmit={handleSubmit}
         noValidate
       >

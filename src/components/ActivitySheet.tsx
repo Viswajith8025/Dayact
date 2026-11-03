@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useState, type CSSProperties, type FormEvent } from 'react'
 import { Button } from './Button'
 import { Input } from './Input'
 import type { ActivityWithOwner } from '../lib/activities'
@@ -150,15 +150,16 @@ export function ActivitySheet({
           >
             Suggest titles
           </Button>
+          {suggesting ? <div className="suggest-shimmer" aria-hidden /> : null}
           {suggestError ? (
             <p role="alert" className="typo-footnote text-[var(--color-danger)]">
               {suggestError}
             </p>
           ) : null}
           {suggestions.length > 0 ? (
-            <ul className="flex flex-col gap-[var(--space-2)]" aria-label="AI suggestions">
-              {suggestions.map((suggestion) => (
-                <li key={suggestion}>
+            <ul className="motion-stagger flex flex-col gap-[var(--space-2)]" aria-label="AI suggestions">
+              {suggestions.map((suggestion, index) => (
+                <li key={suggestion} style={{ '--stagger-index': index } as CSSProperties}>
                   <button
                     type="button"
                     className="btn btn--secondary w-full justify-start text-left"

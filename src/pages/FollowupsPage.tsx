@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { ActivitySheet } from '../components/ActivitySheet'
 import { Button } from '../components/Button'
 import { useAuth } from '../lib/auth'
@@ -250,8 +250,13 @@ export function FollowupsPage() {
       ) : allEmpty ? (
         <p className="typo-subhead text-[var(--color-text-muted)]">You're all caught up.</p>
       ) : (
-        visibleGroups.map((groupKey) => (
-          <section key={groupKey} className="space-y-[var(--space-3)]">
+        <div className="motion-stagger space-y-[var(--space-section)]">
+        {visibleGroups.map((groupKey, sectionIndex) => (
+          <section
+            key={groupKey}
+            className="space-y-[var(--space-3)]"
+            style={{ '--stagger-index': sectionIndex } as CSSProperties}
+          >
             <h2 className="typo-caption text-[var(--color-text-muted)] uppercase tracking-wide">
               {groupLabels[groupKey]}
             </h2>
@@ -289,7 +294,8 @@ export function FollowupsPage() {
               ))}
             </ul>
           </section>
-        ))
+        ))}
+        </div>
       )}
 
       <ActivitySheet
