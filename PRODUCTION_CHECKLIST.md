@@ -9,7 +9,8 @@ Use this the night before or morning of go-live.
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
 3. Deploy triggers on push; confirm latest deploy is **Published**.
-4. Production URL: **`https://dayact-tracker.netlify.app`** (also **`https://dayact.netlify.app`** if both are connected).
+4. **Site configuration → General → Netlify Badge → Hide badge** (the “Powered by Netlify” pill is injected by Netlify, not this repo).
+5. Production URL: **`https://dayact-tracker.netlify.app`** (also **`https://dayact.netlify.app`** if both are connected).
 
 ## Supabase (`aqchmwcycnoaylmqneca`)
 

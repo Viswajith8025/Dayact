@@ -4,6 +4,7 @@ import { CalendarDays, ListChecks, LogOut, Menu, Trophy, X } from 'lucide-react'
 import { AchievementCelebrations } from './AchievementCelebrations'
 import { ConnectionGate } from './ConnectionGate'
 import { DayactBrand } from './DayactBrand'
+import { InstallMenuAction, InstallPromptBar } from './InstallPrompt'
 import { ThemeToggle } from './ThemeToggle'
 import { useAuth } from '../lib/auth'
 import {
@@ -101,6 +102,7 @@ function SessionFooter({ layout }: { layout: 'sidebar' | 'header-menu' }) {
     return (
       <div className="mt-auto space-y-[var(--space-4)] border-t border-[var(--color-separator)] pt-[var(--space-4)]">
         <ThemeToggle />
+        <InstallMenuAction />
         <div className="flex items-center justify-between gap-[var(--space-2)]">
           <span className="typo-footnote text-[var(--color-text-muted)] tabular-nums">{APP_VERSION}</span>
           <button
@@ -120,6 +122,7 @@ function SessionFooter({ layout }: { layout: 'sidebar' | 'header-menu' }) {
   return (
     <div className="flex w-56 flex-col gap-[var(--space-3)] p-[var(--space-3)]">
       <ThemeToggle />
+      <InstallMenuAction />
       <span className="typo-footnote text-[var(--color-text-muted)] tabular-nums">{APP_VERSION}</span>
       <button
         type="button"
@@ -285,6 +288,7 @@ export function AppShell() {
         >
           <AppNav layout="tabs" followUpBadge={followUpBadge} badgePop={badgePop} />
         </nav>
+        <InstallPromptBar />
       </div>
     </div>
   )

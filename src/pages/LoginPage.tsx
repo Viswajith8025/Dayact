@@ -5,6 +5,7 @@ import { ConnectionGate } from '../components/ConnectionGate'
 import { DayactBrand } from '../components/DayactBrand'
 import { Input } from '../components/Input'
 import { ThemeToggle } from '../components/ThemeToggle'
+import { InstallPromptBar } from '../components/InstallPrompt'
 import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/supabase'
 
@@ -107,6 +108,7 @@ export function LoginPage() {
           </form>
         </ConnectionGate>
       </div>
+      <InstallPromptBar anchor="screen" />
     </div>
   )
 }

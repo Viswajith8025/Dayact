@@ -138,6 +138,33 @@ body {
   color: var(--color-text);
 }
 
+/* Netlify free-tier badge is injected by their script — hide in UI; also disable in Netlify → General → Hide badge */
+a[href*="netlify.com"][href*="utm_source=badge"],
+#netlify-badge,
+[data-netlify-badge],
+iframe[title*="Netlify"] {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+.install-prompt__inner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-group);
+  border: 0.5px solid var(--color-separator);
+  background: var(--color-surface);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+@media (max-resolution: 1.99dppx) {
+  .install-prompt__inner {
+    border-width: 1px;
+  }
+}
+
 #root {
   min-height: 100dvh;
 }
