@@ -10,13 +10,19 @@ const env = Object.fromEntries(
     }),
 )
 
-const key = env.GEMINI_API_KEY
+const key = env.GEMINI_API_KEY?.replace(/^["']|["']$/g, '').trim()
 if (!key) {
   console.log('no GEMINI_API_KEY in .env')
   process.exit(1)
 }
+if (!key.startsWith('AIza') && !key.startsWith('AQ.')) {
+  console.log(
+    'GEMINI_API_KEY must start with AIza or AQ. (from Google AI Studio). Run: node scripts/check-gemini-env.mjs',
+  )
+  process.exit(1)
+}
 
-const model = process.argv[2] ?? 'gemini-3.8-flash'
+const model = process.argv[2] ?? 'gemini-3.5-flash-lite'
 const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`
 const res = await fetch(url, {
   method: 'POST',

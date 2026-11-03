@@ -87,8 +87,12 @@ function SessionFooter({ layout }: { layout: 'sidebar' | 'header-menu' }) {
   async function handleSignOut() {
     if (signingOut) return
     setSigningOut(true)
-    await signOut()
     navigate('/login', { replace: true })
+    try {
+      await signOut()
+    } finally {
+      setSigningOut(false)
+    }
   }
 
   if (layout === 'sidebar') {
@@ -193,10 +197,10 @@ export function AppShell() {
         <header className="glass-bar sticky top-0 z-20 flex items-center justify-between px-[var(--space-page)] py-[var(--space-2)] pt-[max(var(--space-2),env(safe-area-inset-top))] md:hidden">
           {compactTitle ? (
             <>
-              <div className="relative">
+              <div className={mobileMenuOpen ? 'relative z-30' : 'relative'}>
                 <button
                   type="button"
-                  className="btn btn--icon btn--tertiary"
+                  className="btn btn--icon btn--tertiary relative z-30"
                   aria-expanded={mobileMenuOpen}
                   aria-haspopup="true"
                   aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
@@ -216,7 +220,7 @@ export function AppShell() {
                       aria-label="Close menu"
                       onClick={() => setMobileMenuOpen(false)}
                     />
-                    <div className="menu-popover absolute left-0 top-full z-20 mt-[var(--space-2)] w-48">
+                    <div className="menu-popover menu-popover--motion absolute left-0 top-full z-20 mt-[var(--space-2)] w-48">
                       <SessionFooter layout="header-menu" />
                     </div>
                   </>
@@ -230,10 +234,10 @@ export function AppShell() {
           ) : (
             <>
               <p className="typo-headline text-[var(--color-text)]">Dayact</p>
-              <div className="relative">
+              <div className={mobileMenuOpen ? 'relative z-30' : 'relative'}>
                 <button
                   type="button"
-                  className="btn btn--icon btn--tertiary"
+                  className="btn btn--icon btn--tertiary relative z-30"
                   aria-expanded={mobileMenuOpen}
                   aria-haspopup="true"
                   aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
@@ -253,7 +257,7 @@ export function AppShell() {
                       aria-label="Close menu"
                       onClick={() => setMobileMenuOpen(false)}
                     />
-                    <div className="menu-popover absolute right-0 top-full z-20 mt-[var(--space-2)] w-48">
+                    <div className="menu-popover menu-popover--motion absolute right-0 top-full z-20 mt-[var(--space-2)] w-48">
                       <SessionFooter layout="header-menu" />
                     </div>
                   </>

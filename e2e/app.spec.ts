@@ -31,6 +31,36 @@ test.describe('signed-in flows', () => {
     await expect(page.getByRole('alert')).toContainText('Add a title')
   })
 
+  test('suggest titles shows friendly error on 502', async ({ page }) => {
+    await page.route('**/api/suggest-activity', async (route) => {
+      await route.fulfill({
+        status: 502,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'Invalid or unauthorized Gemini key' }),
+      })
+    })
+
+    await page.getByRole('button', { name: 'Add' }).click()
+    await page.getByRole('button', { name: 'Suggest titles' }).click()
+    await expect(page.getByRole('alert')).toContainText('Suggestions unavailable right now')
+    await expect(page.getByRole('button', { name: 'Suggest titles' })).toBeEnabled()
+  })
+
+  test('suggest titles shows slow hint after 5 seconds', async ({ page }) => {
+    await page.route('**/api/suggest-activity', async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 8000))
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ suggestions: ['One', 'Two', 'Three'] }),
+      })
+    })
+
+    await page.getByRole('button', { name: 'Add' }).click()
+    await page.getByRole('button', { name: 'Suggest titles' }).click()
+    await expect(page.getByRole('status')).toContainText('Still working', { timeout: 7000 })
+  })
+
   test('suggest titles uses mocked AI in dev', async ({ page }) => {
     await page.route('**/api/suggest-activity', async (route) => {
       await route.fulfill({

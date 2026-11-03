@@ -8,7 +8,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 const SYSTEM_PROMPT =
   'Suggest daily activity titles for a two-person shared planner. Return JSON only: {"suggestions":["title1","title2","title3"]}. Each title at most 120 characters, sentence case, specific and actionable, no emoji.'
 
-const GEMINI_MODELS = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-3.5-flash-lite']
+const GEMINI_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.8-flash']
 
 function readJsonBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -44,7 +44,7 @@ async function fetchGeminiWithModel(apiKey: string, hint: string, model: string)
 
   if (!geminiRes.ok) {
     const detail = (await geminiRes.text()).slice(0, 240)
-    if (geminiRes.status === 404) {
+    if (geminiRes.status === 404 || geminiRes.status === 503 || geminiRes.status === 429) {
       return { retry: true, error: `Model ${model} unavailable.` }
     }
     if (geminiRes.status === 400 || geminiRes.status === 403) {

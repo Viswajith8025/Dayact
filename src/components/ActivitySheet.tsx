@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties, type FormEvent } from 'react'
 import { Button } from './Button'
 import { Input } from './Input'
+import { SheetPortal } from './SheetPortal'
 import type { ActivityWithOwner } from '../lib/activities'
 import { suggestActivityTitles } from '../lib/groqSuggest'
 
@@ -128,13 +129,20 @@ export function ActivitySheet({
   }
 
   return (
-    <div
-      className="sheet-backdrop"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="activity-sheet-title"
-    >
-      <form className="sheet-panel space-y-[var(--space-5)]" onSubmit={handleSubmit} noValidate>
+    <SheetPortal>
+      <div
+        className="sheet-backdrop"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="activity-sheet-title"
+        onClick={onClose}
+      >
+        <form
+          className="sheet-panel space-y-[var(--space-5)]"
+          onSubmit={handleSubmit}
+          noValidate
+          onClick={(event) => event.stopPropagation()}
+        >
         <div className="sheet-grabber" aria-hidden />
         <h2 id="activity-sheet-title" className="typo-title text-[var(--color-text)]">
           {mode === 'create' ? 'Add activity' : 'Edit activity'}
@@ -234,5 +242,6 @@ export function ActivitySheet({
         </div>
       </form>
     </div>
+    </SheetPortal>
   )
 }

@@ -67,9 +67,9 @@
   :root {
     color-scheme: dark;
 
-    --color-bg: #000000;
-    --color-surface: #1c1c1e;
-    --color-surface-elevated: #2c2c2e;
+    --color-bg: #121214;
+    --color-surface: #1e1e22;
+    --color-surface-elevated: #2a2a30;
     --color-text: #f5f5f7;
     --color-text-muted: #98989d;
     --color-text-tertiary: #98989d;
@@ -512,35 +512,42 @@ button,
 .sheet-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 40;
+  z-index: 50;
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  padding: var(--space-page);
-  padding-bottom: max(var(--space-page), env(safe-area-inset-bottom));
-  background: rgba(0, 0, 0, 0.4);
+  padding: 0;
+  background: rgba(0, 0, 0, 0.55);
   animation: sheet-fade-in var(--duration-sheet) var(--ease-motion);
 }
 
 @media (min-width: 768px) {
   .sheet-backdrop {
     align-items: center;
+    padding: var(--space-page);
+    padding-bottom: max(var(--space-page), env(safe-area-inset-bottom));
   }
 }
 
 .sheet-panel {
   width: 100%;
   max-width: 32rem;
-  max-height: min(90dvh, 100%);
+  max-height: min(92dvh, 100%);
   overflow-y: auto;
-  border-radius: var(--radius-sheet);
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
   background: var(--color-surface);
-  padding: var(--space-5) var(--space-page) max(var(--space-5), env(safe-area-inset-bottom));
+  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.35);
+  padding: var(--space-4) var(--space-page) max(var(--space-6), calc(env(safe-area-inset-bottom) + var(--space-4)));
   animation: sheet-slide-up var(--duration-sheet) var(--ease-motion);
 }
 
 @media (min-width: 768px) {
   .sheet-panel {
+    border-radius: var(--radius-sheet);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25);
+    padding: var(--space-5) var(--space-page) max(var(--space-5), env(safe-area-inset-bottom));
     animation: sheet-fade-in var(--duration-sheet) var(--ease-motion);
   }
 }
@@ -667,7 +674,7 @@ button,
   min-height: var(--touch-min);
   width: 100%;
   padding: 0 var(--space-4);
-  border: 0.5px solid transparent;
+  border: 0.5px solid var(--color-border);
   border-radius: var(--radius-control);
   background: var(--color-surface-elevated);
   color: var(--color-text);
@@ -732,7 +739,16 @@ button,
 }
 
 .motion-page-enter {
-  animation: motion-enter var(--duration-state) var(--ease-motion) both;
+  animation: page-route-fade var(--duration-state) var(--ease-motion) both;
+}
+
+@keyframes page-route-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .motion-stagger > * {

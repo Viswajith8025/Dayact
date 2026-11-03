@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ActivitySheet } from '../components/ActivitySheet'
 import { Button } from '../components/Button'
 import { DisplayNamePrompt } from '../components/DisplayNamePrompt'
+import { SheetPortal } from '../components/SheetPortal'
 import { useAuth } from '../lib/auth'
 import {
   awardAchievements,
@@ -589,13 +590,18 @@ export function TodayPage() {
       />
 
       {deleteTarget ? (
-        <div
-          className="sheet-backdrop z-50"
-          role="alertdialog"
-          aria-modal="true"
-          aria-labelledby="delete-activity-title"
-        >
-          <div className="sheet-panel w-full max-w-sm space-y-[var(--space-5)] alert-panel-pop">
+        <SheetPortal>
+          <div
+            className="sheet-backdrop"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="delete-activity-title"
+            onClick={() => setDeleteTarget(null)}
+          >
+            <div
+              className="sheet-panel w-full max-w-sm space-y-[var(--space-5)] alert-panel-pop"
+              onClick={(event) => event.stopPropagation()}
+            >
             <h2 id="delete-activity-title" className="typo-title text-[var(--color-text)]">
               Delete this activity?
             </h2>
@@ -622,8 +628,9 @@ export function TodayPage() {
                 Delete
               </Button>
             </div>
+            </div>
           </div>
-        </div>
+        </SheetPortal>
       ) : null}
     </section>
   )

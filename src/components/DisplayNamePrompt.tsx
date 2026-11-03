@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Button } from './Button'
 import { Input } from './Input'
+import { SheetPortal } from './SheetPortal'
 import { updateDisplayName } from '../lib/activities'
 
 type DisplayNamePromptProps = {
@@ -51,12 +52,13 @@ export function DisplayNamePrompt({ userId, onSaved, onDismiss }: DisplayNamePro
   }
 
   return (
-    <div
-      className="sheet-backdrop z-50"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="display-name-title"
-    >
+    <SheetPortal>
+      <div
+        className="sheet-backdrop"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="display-name-title"
+      >
       <form
         className="sheet-panel w-full max-w-md space-y-[var(--space-5)] alert-panel-pop"
         onSubmit={handleSubmit}
@@ -91,5 +93,6 @@ export function DisplayNamePrompt({ userId, onSaved, onDismiss }: DisplayNamePro
         </Button>
       </form>
     </div>
+    </SheetPortal>
   )
 }
