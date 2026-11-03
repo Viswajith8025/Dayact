@@ -1,5 +1,5 @@
 import { format, parseISO } from 'date-fns'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../lib/auth'
 import {
   ACHIEVEMENT_DONE_TARGETS,
@@ -13,8 +13,23 @@ import {
 
 type ViewMode = 'you' | 'friend'
 
+function MedalIcon({ locked = false }: { locked?: boolean }) {
+  const fill = locked ? 'var(--color-separator)' : 'var(--color-accent)'
+  const ring = locked ? 'var(--color-text-tertiary)' : 'rgba(255,255,255,0.45)'
+  return (
+    <svg className="medal-icon" width="44" height="44" viewBox="0 0 44 44" aria-hidden>
+      <polygon
+        points="22,6 27,16 38,18 29,26 31,38 22,32 13,38 15,26 6,18 17,16"
+        fill={fill}
+      />
+      <circle cx="22" cy="21" r="8.5" fill="none" stroke={ring} strokeWidth="1" />
+    </svg>
+  )
+}
+
 export function AchievementsPage() {
   const { user } = useAuth()
+  const titleSentinelRef = useRef<HTMLDivElement>(null)
   const [catalog, setCatalog] = useState<AchievementDefinition[]>([])
   const [earned, setEarned] = useState<Map<string, string>>(new Map())
   const [doneCount, setDoneCount] = useState(0)
@@ -24,6 +39,24 @@ export function AchievementsPage() {
   const [error, setError] = useState<string | null>(null)
 
   const subjectId = view === 'you' ? user?.id : friend?.id
+
+  useEffect(() => {
+    const el = titleSentinelRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        window.dispatchEvent(
+          new CustomEvent('dayact:title-compact', { detail: !entry.isIntersecting }),
+        )
+      },
+      { threshold: 0, rootMargin: '-56px 0px 0px 0px' },
+    )
+    observer.observe(el)
+    return () => {
+      observer.disconnect()
+      window.dispatchEvent(new CustomEvent('dayact:title-compact', { detail: false }))
+    }
+  }, [])
 
   useEffect(() => {
     if (!user) return
@@ -95,9 +128,20 @@ export function AchievementsPage() {
 
   if (loading) {
     return (
-      <section className="space-y-[var(--space-4)]">
-        <div className="h-8 w-40 animate-pulse rounded-[var(--radius-md)] bg-[var(--color-surface-elevated)]" />
-        <div className="h-24 animate-pulse rounded-[var(--radius-md)] bg-[var(--color-surface-elevated)]" />
+      <section className="space-y-[var(--space-4)]" aria-hidden>
+        <div className="skeleton-block h-9 w-48" />
+        <div className="skeleton-block h-11 w-56" />
+        <ul className="grouped-list">
+          {[0, 1, 2].map((key) => (
+            <li key={key} className="grouped-row">
+              <div className="skeleton-block h-11 w-11 rounded-full" />
+              <div className="min-w-0 flex-1 space-y-2">
+                <div className="skeleton-block h-4 w-40" />
+                <div className="skeleton-block h-3 w-full max-w-sm" />
+              </div>
+            </li>
+          ))}
+        </ul>
       </section>
     )
   }
@@ -105,24 +149,15 @@ export function AchievementsPage() {
   return (
     <section className="space-y-[var(--space-section)]">
       <header className="space-y-[var(--space-4)]">
-        <h1 className="text-[var(--text-xl)] font-medium leading-[var(--leading-tight)] text-[var(--color-text)]">
-          Achievements
-        </h1>
+        <h1 className="typo-large-title text-[var(--color-text)]">Achievements</h1>
+        <div ref={titleSentinelRef} className="h-px w-full" aria-hidden />
 
-        <div
-          className="inline-flex rounded-[var(--radius-md)] bg-[var(--color-surface-elevated)] p-1"
-          role="tablist"
-          aria-label="Achievement view"
-        >
+        <div className="segmented" role="tablist" aria-label="Achievement view">
           <button
             type="button"
             role="tab"
             aria-selected={view === 'you'}
-            className={`min-h-[var(--touch-min)] rounded-[var(--radius-sm)] px-[var(--space-4)] text-[var(--text-sm)] ${
-              view === 'you'
-                ? 'bg-[var(--color-surface)] font-medium text-[var(--color-accent)]'
-                : 'text-[var(--color-text-muted)]'
-            }`}
+            className="segmented__item"
             onClick={() => setView('you')}
           >
             You
@@ -132,11 +167,7 @@ export function AchievementsPage() {
             role="tab"
             aria-selected={view === 'friend'}
             disabled={!friend}
-            className={`min-h-[var(--touch-min)] rounded-[var(--radius-sm)] px-[var(--space-4)] text-[var(--text-sm)] disabled:opacity-40 ${
-              view === 'friend'
-                ? 'bg-[var(--color-surface)] font-medium text-[var(--color-accent)]'
-                : 'text-[var(--color-text-muted)]'
-            }`}
+            className="segmented__item disabled:opacity-40"
             onClick={() => setView('friend')}
           >
             {friendLabel}
@@ -145,10 +176,12 @@ export function AchievementsPage() {
       </header>
 
       {error ? (
-        <p className="text-[var(--text-sm)] text-[var(--color-danger)]">{error}</p>
+        <p className="typo-subhead text-[var(--color-danger)]">
+          Couldn't load achievements. Check your connection and try again.
+        </p>
       ) : null}
 
-      <ul className="space-y-[var(--space-3)]">
+      <ul className="grouped-list">
         {catalog.map((item) => {
           const earnedAt = earned.get(item.code)
           const isEarned = Boolean(earnedAt)
@@ -157,36 +190,34 @@ export function AchievementsPage() {
           const target = ACHIEVEMENT_DONE_TARGETS[item.code]
 
           return (
-            <li
-              key={item.code}
-              className={`rounded-[var(--radius-md)] px-[var(--space-5)] py-[var(--space-4)] ${
-                isEarned
-                  ? 'bg-[var(--color-surface)] text-[var(--color-text)]'
-                  : 'bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] opacity-80'
-              }`}
-            >
-              <div className="flex flex-wrap items-start justify-between gap-[var(--space-2)]">
-                <p
-                  className={`text-[var(--text-base)] font-medium leading-[var(--leading-tight)] ${
-                    isEarned ? 'text-[var(--color-text)]' : 'text-[var(--color-text-muted)]'
-                  }`}
-                >
-                  {item.title}
-                </p>
-                {isEarned ? (
-                  <p className="text-[var(--text-xs)] text-[var(--color-text-muted)]">
-                    {format(parseISO(earnedAt!), 'd MMM yyyy')}
+            <li key={item.code}>
+              <div className="grouped-row items-center">
+                <MedalIcon locked={!isEarned} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-start justify-between gap-[var(--space-2)]">
+                    <p
+                      className={`typo-headline ${
+                        isEarned ? 'text-[var(--color-text)]' : 'text-[var(--color-text-muted)]'
+                      }`}
+                    >
+                      {item.title}
+                    </p>
+                    {isEarned ? (
+                      <p className="typo-footnote tabular-nums text-[var(--color-text-muted)]">
+                        {format(parseISO(earnedAt!), 'd MMM yyyy')}
+                      </p>
+                    ) : null}
+                  </div>
+                  <p className="mt-[var(--space-1)] typo-subhead text-[var(--color-text-muted)]">
+                    {item.description}
                   </p>
-                ) : null}
+                  {showProgress && target ? (
+                    <p className="mt-[var(--space-2)] typo-footnote tabular-nums text-[var(--color-text-muted)]">
+                      {Math.min(doneCount, target)} / {target} done
+                    </p>
+                  ) : null}
+                </div>
               </div>
-              <p className="mt-[var(--space-2)] text-[var(--text-sm)] leading-[var(--leading-relaxed)]">
-                {item.description}
-              </p>
-              {showProgress && target ? (
-                <p className="mt-[var(--space-2)] text-[var(--text-xs)] text-[var(--color-text-muted)]">
-                  {Math.min(doneCount, target)} / {target} done
-                </p>
-              ) : null}
             </li>
           )
         })}

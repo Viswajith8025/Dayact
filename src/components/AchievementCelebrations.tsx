@@ -7,6 +7,18 @@ import {
 
 type ToastItem = AchievementDefinition & { id: string }
 
+function MedalIcon() {
+  return (
+    <svg className="medal-icon" width="48" height="48" viewBox="0 0 44 44" aria-hidden>
+      <polygon
+        points="22,6 27,16 38,18 29,26 31,38 22,32 13,38 15,26 6,18 17,16"
+        fill="var(--color-accent)"
+      />
+      <circle cx="22" cy="21" r="8.5" fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="1" />
+    </svg>
+  )
+}
+
 export function AchievementCelebrations() {
   const [catalog, setCatalog] = useState<Map<string, AchievementDefinition>>(new Map())
   const [toasts, setToasts] = useState<ToastItem[]>([])
@@ -52,7 +64,7 @@ export function AchievementCelebrations() {
     const timers = toasts.map((toast) =>
       window.setTimeout(() => {
         setToasts((prev) => prev.filter((item) => item.id !== toast.id))
-      }, 4200),
+      }, 3000),
     )
     return () => timers.forEach((timer) => window.clearTimeout(timer))
   }, [toasts])
@@ -61,23 +73,18 @@ export function AchievementCelebrations() {
 
   return (
     <div
-      className="pointer-events-none fixed inset-x-0 top-[var(--space-page)] z-[60] flex flex-col items-center gap-[var(--space-3)] px-[var(--space-page)] md:items-end md:pr-[var(--space-section)]"
+      className="pointer-events-none fixed inset-x-0 top-[max(var(--space-page),env(safe-area-inset-top))] z-[60] flex flex-col items-center gap-[var(--space-3)] px-[var(--space-page)] md:items-end md:pr-[var(--space-page)]"
       aria-live="polite"
     >
       {toasts.map((toast) => (
-        <div
-          key={toast.id}
-          className="w-full max-w-sm rounded-[var(--radius-lg)] bg-[var(--color-surface)] px-[var(--space-5)] py-[var(--space-4)] shadow-lg ring-1 ring-[var(--color-border)]"
-        >
-          <p className="text-[var(--text-sm)] font-medium leading-[var(--leading-tight)] text-[var(--color-accent)]">
-            Achievement unlocked
-          </p>
-          <p className="mt-[var(--space-1)] text-[var(--text-base)] font-medium leading-[var(--leading-tight)] text-[var(--color-text)]">
-            {toast.title}
-          </p>
-          <p className="mt-[var(--space-2)] text-[var(--text-sm)] leading-[var(--leading-relaxed)] text-[var(--color-text-muted)]">
-            {toast.description}
-          </p>
+        <div key={toast.id} className="celebration-toast flex items-start gap-[var(--space-4)]">
+          <MedalIcon />
+          <div className="min-w-0">
+            <p className="typo-headline text-[var(--color-text)]">{toast.title}</p>
+            <p className="mt-[var(--space-1)] typo-subhead text-[var(--color-text-muted)]">
+              {toast.description}
+            </p>
+          </div>
         </div>
       ))}
     </div>

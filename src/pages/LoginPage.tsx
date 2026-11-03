@@ -6,6 +6,16 @@ import { Input } from '../components/Input'
 import { useAuth } from '../lib/auth'
 import { supabase } from '../lib/supabase'
 
+function LoginSkeleton() {
+  return (
+    <div className="space-y-[var(--space-5)] rounded-[var(--radius-group)] bg-[var(--color-surface)] p-[var(--space-6)]" aria-hidden>
+      <div className="skeleton-block h-11 w-full" />
+      <div className="skeleton-block h-11 w-full" />
+      <div className="skeleton-block h-11 w-full" />
+    </div>
+  )
+}
+
 export function LoginPage() {
   const { session, loading } = useAuth()
   const [email, setEmail] = useState('')
@@ -14,7 +24,17 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null)
 
   if (loading) {
-    return null
+    return (
+      <div className="flex min-h-dvh items-start justify-center bg-[var(--color-bg)] px-[var(--space-page)] py-[var(--space-section)] pt-[max(var(--space-section),env(safe-area-inset-top))]">
+        <div className="w-full max-w-md space-y-[var(--space-section)]">
+          <header className="space-y-[var(--space-2)]">
+            <div className="skeleton-block h-8 w-32" />
+            <div className="skeleton-block h-4 w-full max-w-sm" />
+          </header>
+          <LoginSkeleton />
+        </div>
+      </div>
+    )
   }
 
   if (session) {
@@ -34,25 +54,23 @@ export function LoginPage() {
     setSubmitting(false)
 
     if (signInError) {
-      setError(signInError.message)
+      setError('Check your email and password, then try again.')
     }
   }
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-[var(--color-bg)] px-[var(--space-page)] py-[var(--space-section)]">
+    <div className="flex min-h-dvh items-start justify-center bg-[var(--color-bg)] px-[var(--space-page)] py-[var(--space-section)] pt-[max(var(--space-section),env(safe-area-inset-top))]">
       <div className="w-full max-w-md space-y-[var(--space-section)]">
-        <header className="space-y-[var(--space-3)]">
-          <h1 className="text-[var(--text-xl)] font-medium leading-[var(--leading-tight)] text-[var(--color-text)]">
-            Dayact
-          </h1>
-          <p className="text-[var(--text-sm)] leading-[var(--leading-relaxed)] text-[var(--color-text-muted)]">
+        <header className="space-y-[var(--space-2)]">
+          <h1 className="typo-large-title text-[var(--color-text)]">Dayact</h1>
+          <p className="typo-subhead text-[var(--color-text-muted)]">
             Sign in with the account your team owner created for you.
           </p>
         </header>
 
         <ConnectionGate>
           <form
-            className="space-y-[var(--space-5)] rounded-[var(--radius-lg)] bg-[var(--color-surface)] p-[var(--space-6)]"
+            className="space-y-[var(--space-5)] rounded-[var(--radius-group)] bg-[var(--color-surface)] p-[var(--space-page)]"
             onSubmit={handleSubmit}
           >
             <Input
@@ -75,16 +93,13 @@ export function LoginPage() {
             />
 
             {error ? (
-              <p
-                role="alert"
-                className="rounded-[var(--radius-sm)] bg-[var(--color-danger-surface)] px-[var(--space-4)] py-[var(--space-3)] text-[var(--text-sm)] leading-[var(--leading-normal)] text-[var(--color-danger)]"
-              >
+              <p role="alert" className="typo-subhead text-[var(--color-danger)]">
                 {error}
               </p>
             ) : null}
 
-            <Button type="submit" className="w-full" disabled={submitting}>
-              {submitting ? 'Signing in…' : 'Sign in'}
+            <Button type="submit" sheet loading={submitting}>
+              Sign in
             </Button>
           </form>
         </ConnectionGate>

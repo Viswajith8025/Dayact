@@ -1,6 +1,6 @@
 import { addDays, format } from 'date-fns'
-import { Flag, MoreVertical } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { ChevronLeft, ChevronRight, Flag, MoreVertical } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ActivitySheet } from '../components/ActivitySheet'
 import { Button } from '../components/Button'
@@ -26,12 +26,15 @@ import {
 
 function ListSkeleton() {
   return (
-    <ul className="space-y-[var(--space-3)]" aria-hidden>
+    <ul className="grouped-list" aria-hidden>
       {[0, 1, 2].map((key) => (
-        <li
-          key={key}
-          className="h-16 animate-pulse rounded-[var(--radius-md)] bg-[var(--color-surface-elevated)]"
-        />
+        <li key={key} className="grouped-row">
+          <div className="skeleton-block h-6 w-6 rounded-full" />
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="skeleton-block h-4 w-3/4 max-w-xs" />
+            <div className="skeleton-block h-3 w-24" />
+          </div>
+        </li>
       ))}
     </ul>
   )
@@ -60,104 +63,105 @@ function ActivityRow({
   const muted = isDone || isSkipped
 
   return (
-    <li
-      className={`flex items-start gap-[var(--space-3)] rounded-[var(--radius-md)] bg-[var(--color-surface)] px-[var(--space-4)] py-[var(--space-4)] ${
-        muted ? 'opacity-70' : ''
-      }`}
-    >
-      {isOwn ? (
-        <button
-          type="button"
-          aria-label={isDone ? 'Mark as planned' : 'Mark as done'}
-          onClick={() => onToggleDone(activity)}
-          className={`mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 ${
-            isDone
-              ? 'border-[var(--color-accent)] bg-[var(--color-accent)] text-[var(--color-accent-foreground)]'
-              : 'border-[var(--color-border)] bg-[var(--color-surface-elevated)]'
-          }`}
-        >
-          {isDone ? '✓' : ''}
-        </button>
-      ) : (
-        <div
-          className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[var(--text-sm)] font-medium text-white"
-          style={{ backgroundColor: userBadgeColor(activity.user_id) }}
-          aria-hidden
-        >
-          {ownerInitial(activity.display_name)}
-        </div>
-      )}
-
-      <div className="min-w-0 flex-1 space-y-[var(--space-1)]">
-        <div className="flex flex-wrap items-center gap-x-[var(--space-2)] gap-y-[var(--space-1)]">
-          <p
-            className={`text-[var(--text-base)] leading-[var(--leading-normal)] text-[var(--color-text)] ${
-              isDone ? 'line-through' : ''
-            }`}
-          >
-            {activity.title}
-          </p>
-          {activity.follow_up_on ? (
-            <span className="inline-flex items-center gap-1 text-[var(--text-xs)] text-[var(--color-text-muted)]">
-              <Flag size={14} aria-hidden />
-              Follow-up
-            </span>
-          ) : null}
-        </div>
-        <p className="text-[var(--text-xs)] leading-[var(--leading-normal)] text-[var(--color-text-muted)]">
-          {activity.display_name.trim() || 'Teammate'}
-          {isSkipped ? ' · Skipped' : isDone ? ' · Done' : ''}
-        </p>
-      </div>
-
-      {isOwn ? (
-        <div className="relative shrink-0">
+    <li className={muted ? 'opacity-80' : undefined}>
+      <div className="grouped-row">
+        {isOwn ? (
           <button
             type="button"
-            aria-label="Activity actions"
-            className="flex min-h-[var(--touch-min)] min-w-[var(--touch-min)] items-center justify-center rounded-[var(--radius-md)] text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
-            onClick={() => setMenuOpen((open) => !open)}
+            aria-label={isDone ? 'Mark as planned' : 'Mark as done'}
+            onClick={() => onToggleDone(activity)}
+            className={`activity-check ${isDone ? 'activity-check--checked' : ''}`}
           >
-            <MoreVertical size={20} />
+            <span className="activity-check__circle" aria-hidden />
+            <svg className="activity-check__mark" viewBox="0 0 12 10" aria-hidden>
+              <path d="M1 5 L4.5 8.5 L11 1" />
+            </svg>
           </button>
-          {menuOpen ? (
-            <div className="absolute right-0 top-full z-10 mt-1 min-w-36 rounded-[var(--radius-md)] bg-[var(--color-surface-elevated)] py-[var(--space-1)] shadow-lg">
-              <button
-                type="button"
-                className="block w-full px-[var(--space-4)] py-[var(--space-3)] text-left text-[var(--text-sm)] hover:bg-[var(--color-bg)]"
-                onClick={() => {
-                  setMenuOpen(false)
-                  onEdit(activity)
-                }}
-              >
-                Edit
-              </button>
-              {activity.status === 'planned' ? (
+        ) : (
+          <div
+            className="partner-avatar"
+            style={{ backgroundColor: userBadgeColor(activity.user_id) }}
+            aria-hidden
+          >
+            {ownerInitial(activity.display_name)}
+          </div>
+        )}
+
+        <div className="min-w-0 flex-1 space-y-[var(--space-1)]">
+          <div className="flex flex-wrap items-center gap-x-[var(--space-2)] gap-y-[var(--space-1)]">
+            <p
+              className={`typo-body activity-title ${isDone ? 'activity-title--done' : ''}`}
+            >
+              {activity.title}
+            </p>
+            {activity.follow_up_on ? (
+              <span className="typo-caption text-[var(--color-text-muted)] inline-flex items-center gap-1">
+                <Flag size={14} aria-hidden />
+                Follow-up
+              </span>
+            ) : null}
+          </div>
+          <p className="typo-footnote text-[var(--color-text-muted)]">
+            {activity.display_name.trim() || 'Teammate'}
+            {isSkipped ? ' · Skipped' : isDone ? ' · Done' : ''}
+          </p>
+        </div>
+
+        {isOwn ? (
+          <div className="relative shrink-0">
+            <button
+              type="button"
+              aria-label="Activity actions"
+              className="btn btn--icon btn--tertiary"
+              onClick={() => setMenuOpen((open) => !open)}
+            >
+              <MoreVertical size={20} aria-hidden />
+            </button>
+            {menuOpen ? (
+              <>
                 <button
                   type="button"
-                  className="block w-full px-[var(--space-4)] py-[var(--space-3)] text-left text-[var(--text-sm)] hover:bg-[var(--color-bg)]"
-                  onClick={() => {
-                    setMenuOpen(false)
-                    onSkip(activity)
-                  }}
-                >
-                  Skip
-                </button>
-              ) : null}
-              <button
-                type="button"
-                className="block w-full px-[var(--space-4)] py-[var(--space-3)] text-left text-[var(--text-sm)] text-[var(--color-danger)] hover:bg-[var(--color-bg)]"
-                onClick={() => {
-                  setMenuOpen(false)
-                  onDelete(activity)
-                }}
-              >
-                Delete
-              </button>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
+                  className="fixed inset-0 z-10"
+                  aria-label="Close menu"
+                  onClick={() => setMenuOpen(false)}
+                />
+                <div className="menu-popover absolute right-0 top-full z-20 mt-1 min-w-36">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false)
+                      onEdit(activity)
+                    }}
+                  >
+                    Edit
+                  </button>
+                  {activity.status === 'planned' ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuOpen(false)
+                        onSkip(activity)
+                      }}
+                    >
+                      Skip
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="menu-popover__destructive"
+                    onClick={() => {
+                      setMenuOpen(false)
+                      onDelete(activity)
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
     </li>
   )
 }
@@ -166,6 +170,7 @@ export function TodayPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  const titleSentinelRef = useRef<HTMLDivElement>(null)
 
   const today = localDateString()
   const dateParam = searchParams.get('date')
@@ -183,6 +188,25 @@ export function TodayPage() {
   const [profileLoading, setProfileLoading] = useState(true)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editing, setEditing] = useState<ActivityWithOwner | null>(null)
+  const toggleInFlight = useRef(new Set<string>())
+
+  useEffect(() => {
+    const el = titleSentinelRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        window.dispatchEvent(
+          new CustomEvent('dayact:title-compact', { detail: !entry.isIntersecting }),
+        )
+      },
+      { threshold: 0, rootMargin: '-56px 0px 0px 0px' },
+    )
+    observer.observe(el)
+    return () => {
+      observer.disconnect()
+      window.dispatchEvent(new CustomEvent('dayact:title-compact', { detail: false }))
+    }
+  }, [])
 
   const setDateInUrl = useCallback(
     (date: string) => {
@@ -245,15 +269,21 @@ export function TodayPage() {
 
   async function handleToggleDone(activity: ActivityWithOwner) {
     if (!user || activity.user_id !== user.id) return
+    if (toggleInFlight.current.has(activity.id)) return
+    toggleInFlight.current.add(activity.id)
     const nextDone = activity.status !== 'done'
     const result = await setStatus(
       activity.id,
       nextDone ? 'done' : 'planned',
       nextDone ? new Date().toISOString() : null,
     )
+    toggleInFlight.current.delete(activity.id)
     if (result.error) {
       setError(result.error)
       return
+    }
+    if (nextDone) {
+      navigator.vibrate?.(8)
     }
     const updated = result.data!
     setActivities((prev) => prev.map((row) => (row.id === updated.id ? updated : row)))
@@ -282,7 +312,7 @@ export function TodayPage() {
   }
 
   async function handleDelete(activity: ActivityWithOwner) {
-    if (!window.confirm(`Delete “${activity.title}”?`)) return
+    if (!window.confirm("Delete this activity? This can't be undone.")) return
     const result = await remove(activity.id)
     if (result.error) {
       setError(result.error)
@@ -326,9 +356,14 @@ export function TodayPage() {
     return null
   }
 
-  const headingDate = format(selectedDateObj, 'EEEE, MMMM d')
+  const headingDate = format(selectedDateObj, 'EEEE, d MMMM')
   const showDisplayNamePrompt =
     user && !profileLoading && displayName !== null && displayName.trim() === ''
+
+  const emptyCopy =
+    selectedDate === today
+      ? 'Nothing planned. Add something for today.'
+      : 'Nothing planned for this day.'
 
   return (
     <section className="space-y-[var(--space-section)]">
@@ -344,38 +379,35 @@ export function TodayPage() {
       <header className="space-y-[var(--space-4)]">
         <div className="flex flex-wrap items-end justify-between gap-[var(--space-3)]">
           <div>
-            <h1 className="text-[var(--text-xl)] font-medium leading-[var(--leading-tight)] text-[var(--color-text)]">
-              {selectedDate === today ? 'Today' : 'Day'}
-            </h1>
-            <p className="text-[var(--text-sm)] leading-[var(--leading-relaxed)] text-[var(--color-text-muted)]">
-              {headingDate}
-            </p>
+            <h1 className="typo-large-title text-[var(--color-text)]">Today</h1>
+            <p className="typo-subhead text-[var(--color-text-muted)]">{headingDate}</p>
+            <div ref={titleSentinelRef} className="h-px w-full" aria-hidden />
           </div>
           <Button
             type="button"
+            variant="secondary"
             onClick={() => {
               setEditing(null)
               setSheetOpen(true)
             }}
           >
-            Add activity
+            Add
           </Button>
         </div>
 
         <div className="flex flex-wrap items-center gap-[var(--space-2)]">
           <Button
             type="button"
-            variant="ghost"
-            className="min-w-[var(--touch-min)] px-[var(--space-3)]"
+            variant="tertiary"
+            icon
             onClick={() => setDateInUrl(localDateString(addDays(selectedDateObj, -1)))}
             aria-label="Previous day"
           >
-            ←
+            <ChevronLeft size={20} aria-hidden />
           </Button>
           <Button
             type="button"
-            variant="ghost"
-            className="px-[var(--space-4)]"
+            variant="tertiary"
             disabled={selectedDate === today}
             onClick={() => setDateInUrl(today)}
           >
@@ -383,12 +415,12 @@ export function TodayPage() {
           </Button>
           <Button
             type="button"
-            variant="ghost"
-            className="min-w-[var(--touch-min)] px-[var(--space-3)]"
+            variant="tertiary"
+            icon
             onClick={() => setDateInUrl(localDateString(addDays(selectedDateObj, 1)))}
             aria-label="Next day"
           >
-            →
+            <ChevronRight size={20} aria-hidden />
           </Button>
           <input
             type="date"
@@ -397,19 +429,19 @@ export function TodayPage() {
               const value = e.target.value
               if (parsePlannedDate(value)) setDateInUrl(value)
             }}
-            className="min-h-[var(--touch-min)] rounded-[var(--radius-md)] border border-transparent bg-[var(--color-surface-elevated)] px-[var(--space-3)] text-[var(--text-sm)] text-[var(--color-text)]"
+            className="field-input tabular-nums w-auto min-w-0 flex-1 sm:flex-none"
             aria-label="Jump to date"
           />
         </div>
       </header>
 
       {error ? (
-        <div className="space-y-[var(--space-3)] rounded-[var(--radius-md)] bg-[var(--color-danger-surface)] px-[var(--space-4)] py-[var(--space-4)]">
-          <p className="text-[var(--text-sm)] leading-[var(--leading-normal)] text-[var(--color-danger)]">
-            {error}
+        <div className="space-y-[var(--space-3)] rounded-[var(--radius-group)] bg-[var(--color-danger-surface)] px-[var(--space-4)] py-[var(--space-4)]">
+          <p className="typo-subhead text-[var(--color-danger)]">
+            Couldn't save that. Check your connection and try again.
           </p>
-          <Button type="button" variant="ghost" onClick={() => void loadActivities()}>
-            Retry
+          <Button type="button" variant="tertiary" onClick={() => void loadActivities()}>
+            Try again
           </Button>
         </div>
       ) : null}
@@ -417,11 +449,9 @@ export function TodayPage() {
       {loading ? (
         <ListSkeleton />
       ) : sorted.length === 0 ? (
-        <p className="text-[var(--text-sm)] leading-[var(--leading-relaxed)] text-[var(--color-text-muted)]">
-          Nothing planned for this day.
-        </p>
+        <p className="typo-subhead text-[var(--color-text-muted)]">{emptyCopy}</p>
       ) : (
-        <ul className="space-y-[var(--space-3)]">
+        <ul className="grouped-list">
           {sorted.map((activity) => (
             <ActivityRow
               key={activity.id}

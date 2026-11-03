@@ -6,11 +6,8 @@ export function ConnectionGate({ children }: { children: ReactNode }) {
 
   if (!online) {
     return (
-      <p
-        role="status"
-        className="text-[var(--text-sm)] leading-[var(--leading-relaxed)] text-[var(--color-text-muted)]"
-      >
-        No connection. Dayact needs a network connection to load data.
+      <p role="status" className="typo-subhead text-[var(--color-text-muted)]">
+        You're offline. Dayact will load when you're back.
       </p>
     )
   }

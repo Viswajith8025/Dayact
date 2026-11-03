@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ActivitySheet } from '../components/ActivitySheet'
 import { Button } from '../components/Button'
 import { useAuth } from '../lib/auth'
@@ -50,14 +50,10 @@ function FollowUpRow({
   const [showReschedule, setShowReschedule] = useState(false)
 
   return (
-    <li
-      className={`rounded-[var(--radius-md)] bg-[var(--color-surface)] px-[var(--space-4)] py-[var(--space-4)] ${
-        overdue ? 'border-l-2 border-[var(--color-accent)] pl-[calc(var(--space-4)-2px)]' : ''
-      }`}
-    >
-      <div className="flex items-start gap-[var(--space-3)]">
+    <li>
+      <div className={`grouped-row ${overdue ? 'border-l-2 border-[var(--color-accent)]' : ''}`}>
         <div
-          className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[var(--text-sm)] font-medium text-white"
+          className="partner-avatar"
           style={{ backgroundColor: userBadgeColor(activity.user_id) }}
           aria-hidden
         >
@@ -65,41 +61,47 @@ function FollowUpRow({
         </div>
 
         <div className="min-w-0 flex-1 space-y-[var(--space-2)]">
-          <button
-            type="button"
-            onClick={() => onEdit(activity)}
-            className="block w-full text-left"
-          >
-            <p className="text-[var(--text-base)] leading-[var(--leading-normal)] text-[var(--color-text)]">
-              {activity.title}
-            </p>
-            <p
-              className={`text-[var(--text-sm)] leading-[var(--leading-normal)] ${
-                overdue ? 'text-[var(--color-text)]' : 'text-[var(--color-text-muted)]'
-              }`}
-            >
-              {formatFollowUpRelative(activity.follow_up_on!, today)}
-            </p>
-            <p className="text-[var(--text-xs)] leading-[var(--leading-relaxed)] text-[var(--color-text-muted)]">
-              {activity.display_name.trim() || 'Teammate'} ·{' '}
-              {formatPlannedForSecondary(activity.planned_for)}
-            </p>
-          </button>
+          {isOwn ? (
+            <button type="button" onClick={() => onEdit(activity)} className="block w-full text-left">
+              <p className="typo-body text-[var(--color-text)]">{activity.title}</p>
+              <p
+                className={`typo-subhead tabular-nums ${
+                  overdue ? 'text-[var(--color-text)]' : 'text-[var(--color-text-muted)]'
+                }`}
+              >
+                {formatFollowUpRelative(activity.follow_up_on!, today)}
+              </p>
+              <p className="typo-footnote text-[var(--color-text-muted)]">
+                {activity.display_name.trim() || 'Teammate'} ·{' '}
+                {formatPlannedForSecondary(activity.planned_for)}
+              </p>
+            </button>
+          ) : (
+            <div className="block w-full text-left">
+              <p className="typo-body text-[var(--color-text)]">{activity.title}</p>
+              <p
+                className={`typo-subhead tabular-nums ${
+                  overdue ? 'text-[var(--color-text)]' : 'text-[var(--color-text-muted)]'
+                }`}
+              >
+                {formatFollowUpRelative(activity.follow_up_on!, today)}
+              </p>
+              <p className="typo-footnote text-[var(--color-text-muted)]">
+                {activity.display_name.trim() || 'Teammate'} ·{' '}
+                {formatPlannedForSecondary(activity.planned_for)}
+              </p>
+            </div>
+          )}
 
           {isOwn ? (
             <div className="flex flex-wrap gap-[var(--space-2)]">
-              <Button type="button" variant="ghost" className="px-[var(--space-3)]" onClick={() => onDone(activity)}>
+              <Button type="button" variant="tertiary" onClick={() => onDone(activity)}>
                 Done
               </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                className="px-[var(--space-3)]"
-                onClick={() => setShowReschedule((open) => !open)}
-              >
+              <Button type="button" variant="tertiary" onClick={() => setShowReschedule((open) => !open)}>
                 Reschedule
               </Button>
-              <Button type="button" variant="ghost" className="px-[var(--space-3)]" onClick={() => onClear(activity)}>
+              <Button type="button" variant="tertiary" onClick={() => onClear(activity)}>
                 Remove follow-up
               </Button>
             </div>
@@ -111,18 +113,18 @@ function FollowUpRow({
                 type="date"
                 value={rescheduleDate}
                 onChange={(e) => setRescheduleDate(e.target.value)}
-                className="min-h-[var(--touch-min)] rounded-[var(--radius-md)] border border-transparent bg-[var(--color-surface-elevated)] px-[var(--space-3)] text-[var(--text-sm)] text-[var(--color-text)]"
+                className="field-input tabular-nums w-auto"
                 aria-label="New follow-up date"
               />
               <Button
                 type="button"
-                className="px-[var(--space-4)]"
+                variant="secondary"
                 onClick={() => {
                   onReschedule(activity, rescheduleDate)
                   setShowReschedule(false)
                 }}
               >
-                Save date
+                Save
               </Button>
             </div>
           ) : null}
@@ -134,12 +136,15 @@ function FollowUpRow({
 
 function ListSkeleton() {
   return (
-    <ul className="space-y-[var(--space-3)]" aria-hidden>
+    <ul className="grouped-list" aria-hidden>
       {[0, 1, 2].map((key) => (
-        <li
-          key={key}
-          className="h-20 animate-pulse rounded-[var(--radius-md)] bg-[var(--color-surface-elevated)]"
-        />
+        <li key={key} className="grouped-row">
+          <div className="skeleton-block h-7 w-7 rounded-full" />
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="skeleton-block h-4 w-2/3 max-w-xs" />
+            <div className="skeleton-block h-3 w-32" />
+          </div>
+        </li>
       ))}
     </ul>
   )
@@ -148,11 +153,30 @@ function ListSkeleton() {
 export function FollowupsPage() {
   const { user } = useAuth()
   const today = localDateString()
+  const titleSentinelRef = useRef<HTMLDivElement>(null)
   const [items, setItems] = useState<ActivityWithOwner[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState<ActivityWithOwner | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
+
+  useEffect(() => {
+    const el = titleSentinelRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        window.dispatchEvent(
+          new CustomEvent('dayact:title-compact', { detail: !entry.isIntersecting }),
+        )
+      },
+      { threshold: 0, rootMargin: '-56px 0px 0px 0px' },
+    )
+    observer.observe(el)
+    return () => {
+      observer.disconnect()
+      window.dispatchEvent(new CustomEvent('dayact:title-compact', { detail: false }))
+    }
+  }, [])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -203,21 +227,20 @@ export function FollowupsPage() {
   return (
     <section className="space-y-[var(--space-section)]">
       <header className="space-y-[var(--space-2)]">
-        <h1 className="text-[var(--text-xl)] font-medium leading-[var(--leading-tight)] text-[var(--color-text)]">
-          Followups
-        </h1>
-        <p className="text-[var(--text-sm)] leading-[var(--leading-relaxed)] text-[var(--color-text-muted)]">
+        <h1 className="typo-large-title text-[var(--color-text)]">Follow-ups</h1>
+        <p className="typo-subhead text-[var(--color-text-muted)]">
           Open follow-ups across your shared space.
         </p>
+        <div ref={titleSentinelRef} className="h-px w-full" aria-hidden />
       </header>
 
       {error ? (
-        <div className="space-y-[var(--space-3)] rounded-[var(--radius-md)] bg-[var(--color-danger-surface)] px-[var(--space-4)] py-[var(--space-4)]">
-          <p className="text-[var(--text-sm)] leading-[var(--leading-normal)] text-[var(--color-danger)]">
-            {error}
+        <div className="space-y-[var(--space-3)] rounded-[var(--radius-group)] bg-[var(--color-danger-surface)] px-[var(--space-4)] py-[var(--space-4)]">
+          <p className="typo-subhead text-[var(--color-danger)]">
+            Couldn't save that. Check your connection and try again.
           </p>
-          <Button type="button" variant="ghost" onClick={() => void load()}>
-            Retry
+          <Button type="button" variant="tertiary" onClick={() => void load()}>
+            Try again
           </Button>
         </div>
       ) : null}
@@ -225,16 +248,14 @@ export function FollowupsPage() {
       {loading ? (
         <ListSkeleton />
       ) : allEmpty ? (
-        <p className="text-[var(--text-sm)] leading-[var(--leading-relaxed)] text-[var(--color-text-muted)]">
-          No open follow-ups.
-        </p>
+        <p className="typo-subhead text-[var(--color-text-muted)]">You're all caught up.</p>
       ) : (
         visibleGroups.map((groupKey) => (
           <section key={groupKey} className="space-y-[var(--space-3)]">
-            <h2 className="text-[var(--text-sm)] font-medium uppercase tracking-wide text-[var(--color-text-muted)]">
+            <h2 className="typo-caption text-[var(--color-text-muted)] uppercase tracking-wide">
               {groupLabels[groupKey]}
             </h2>
-            <ul className="space-y-[var(--space-3)]">
+            <ul className="grouped-list">
               {groups[groupKey].map((activity) => (
                 <FollowUpRow
                   key={activity.id}

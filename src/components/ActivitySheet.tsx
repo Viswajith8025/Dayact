@@ -44,13 +44,26 @@ export function ActivitySheet({
     setSaving(false)
   }, [open, initial, defaultPlannedFor])
 
+  useEffect(() => {
+    if (!open) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [open, onClose])
+
   if (!open) return null
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
+    if (saving) return
     const trimmedTitle = title.trim()
     if (!trimmedTitle) {
-      setError('Title is required.')
+      setError('Add a title to continue.')
       return
     }
     if (trimmedTitle.length > 120) {
@@ -74,7 +87,7 @@ export function ActivitySheet({
     setSaving(false)
 
     if (saveError) {
-      setError(saveError)
+      setError("Couldn't save that. Check your connection and try again.")
       return
     }
 
@@ -83,19 +96,14 @@ export function ActivitySheet({
 
   return (
     <div
-      className="fixed inset-0 z-40 flex items-end justify-center bg-[color-mix(in_srgb,var(--color-text)_25%,transparent)] p-[var(--space-page)] md:items-center"
+      className="sheet-backdrop"
       role="dialog"
       aria-modal="true"
       aria-labelledby="activity-sheet-title"
     >
-      <form
-        className="max-h-[90dvh] w-full max-w-lg space-y-[var(--space-5)] overflow-y-auto rounded-[var(--radius-lg)] bg-[var(--color-surface)] p-[var(--space-6)]"
-        onSubmit={handleSubmit}
-      >
-        <h2
-          id="activity-sheet-title"
-          className="text-[var(--text-lg)] font-medium leading-[var(--leading-tight)] text-[var(--color-text)]"
-        >
+      <form className="sheet-panel space-y-[var(--space-5)]" onSubmit={handleSubmit}>
+        <div className="sheet-grabber" aria-hidden />
+        <h2 id="activity-sheet-title" className="typo-title text-[var(--color-text)]">
           {mode === 'create' ? 'Add activity' : 'Edit activity'}
         </h2>
 
@@ -108,7 +116,7 @@ export function ActivitySheet({
           onChange={(e) => setTitle(e.target.value)}
         />
 
-        <label className="flex flex-col gap-[var(--space-2)] text-[var(--text-sm)] text-[var(--color-text-muted)]">
+        <label className="flex flex-col gap-[var(--space-2)] typo-footnote text-[var(--color-text-muted)]">
           <span>Notes (optional)</span>
           <textarea
             name="notes"
@@ -116,7 +124,7 @@ export function ActivitySheet({
             rows={4}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            className="min-h-[6rem] w-full resize-y rounded-[var(--radius-md)] border border-transparent bg-[var(--color-surface-elevated)] px-[var(--space-4)] py-[var(--space-3)] text-[var(--color-text)] outline-none focus:border-[var(--color-accent)]"
+            className="field-input min-h-[6rem] resize-y py-[var(--space-3)]"
           />
         </label>
 
@@ -138,20 +146,17 @@ export function ActivitySheet({
         />
 
         {error ? (
-          <p
-            role="alert"
-            className="text-[var(--text-sm)] leading-[var(--leading-normal)] text-[var(--color-danger)]"
-          >
+          <p role="alert" className="typo-subhead text-[var(--color-danger)]">
             {error}
           </p>
         ) : null}
 
-        <div className="flex gap-[var(--space-3)]">
-          <Button type="button" variant="ghost" className="flex-1" onClick={onClose}>
+        <div className="flex flex-col gap-[var(--space-3)] sm:flex-row">
+          <Button type="button" variant="secondary" sheet className="sm:flex-1" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" className="flex-1" disabled={saving}>
-            {saving ? 'Saving…' : 'Save'}
+          <Button type="submit" sheet className="sm:flex-1" loading={saving}>
+            Save
           </Button>
         </div>
       </form>

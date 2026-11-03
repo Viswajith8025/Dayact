@@ -2,33 +2,39 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react'
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   children: ReactNode
-  variant?: 'primary' | 'ghost'
+  variant?: 'primary' | 'secondary' | 'tertiary' | 'destructive'
+  loading?: boolean
+  sheet?: boolean
+  icon?: boolean
 }
 
 export function Button({
   children,
   variant = 'primary',
+  loading = false,
+  sheet = false,
+  icon = false,
   className = '',
   type = 'button',
+  disabled,
   ...props
 }: ButtonProps) {
-  const base =
-    'inline-flex min-h-[var(--touch-min)] items-center justify-center rounded-[var(--radius-md)] px-[var(--space-5)] text-[var(--text-sm)] font-medium leading-[var(--leading-tight)] transition-opacity disabled:cursor-not-allowed disabled:opacity-50'
-
-  const variants = {
-    primary:
-      'bg-[var(--color-accent)] text-[var(--color-accent-foreground)] hover:opacity-90',
-    ghost:
-      'bg-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text)]',
-  }
+  const variantClass = {
+    primary: 'btn--primary',
+    secondary: 'btn--secondary',
+    tertiary: 'btn--tertiary',
+    destructive: 'btn--destructive',
+  }[variant]
 
   return (
     <button
       type={type}
-      className={`${base} ${variants[variant]} ${className}`.trim()}
+      className={`btn ${variantClass} ${sheet ? 'btn--sheet' : ''} ${icon ? 'btn--icon' : ''} ${className}`.trim()}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
       {...props}
     >
-      {children}
+      {loading ? <span className="btn-spinner" aria-hidden /> : children}
     </button>
   )
 }
