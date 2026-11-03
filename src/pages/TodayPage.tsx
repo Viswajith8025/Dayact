@@ -1,11 +1,12 @@
 import { addDays, format } from 'date-fns'
 import { ChevronLeft, ChevronRight, Flag, MoreVertical } from 'lucide-react'
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ActivitySheet } from '../components/ActivitySheet'
 import { Button } from '../components/Button'
 import { DisplayNamePrompt } from '../components/DisplayNamePrompt'
 import { SheetPortal } from '../components/SheetPortal'
+import { computeAnchoredMenuPosition } from '../lib/menuPosition'
 import { useAuth } from '../lib/auth'
 import {
   awardAchievements,
@@ -72,27 +73,6 @@ function ActivityRow({
   const muted = isDone || isSkipped
   const hasOpenFollowUp = Boolean(activity.follow_up_on && !activity.follow_up_done)
 
-  useLayoutEffect(() => {
-    if (!menuOpen) {
-      setMenuPos(null)
-      return
-    }
-    const el = menuBtnRef.current
-    if (!el) return
-    const rect = el.getBoundingClientRect()
-    const menuWidth = 144
-    const menuHeight = 132
-    let top = rect.bottom + 4
-    if (top + menuHeight > window.innerHeight - 8) {
-      top = Math.max(8, rect.top - menuHeight - 4)
-    }
-    const left = Math.min(
-      Math.max(8, rect.right - menuWidth),
-      window.innerWidth - menuWidth - 8,
-    )
-    setMenuPos({ top, left })
-  }, [menuOpen])
-
   useEffect(() => {
     if (!menuOpen) return
     const onKeyDown = (event: KeyboardEvent) => {
@@ -104,6 +84,17 @@ function ActivityRow({
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [menuOpen])
+
+  function openActionsMenu() {
+    const el = menuBtnRef.current
+    if (!el) return
+    if (menuOpen) {
+      setMenuOpen(false)
+      return
+    }
+    setMenuPos(computeAnchoredMenuPosition(el))
+    setMenuOpen(true)
+  }
 
   return (
     <li
@@ -160,25 +151,28 @@ function ActivityRow({
               type="button"
               aria-label="Activity actions"
               aria-expanded={menuOpen}
+              aria-haspopup="menu"
               className="btn btn--icon btn--tertiary"
-              onClick={() => setMenuOpen((open) => !open)}
+              onClick={openActionsMenu}
             >
               <MoreVertical size={20} aria-hidden />
             </button>
             {menuOpen && menuPos ? (
-              <>
+              <SheetPortal>
                 <button
                   type="button"
-                  className="fixed inset-0 z-30"
+                  className="fixed inset-0 z-[55] bg-black/25"
                   aria-label="Close menu"
                   onClick={() => setMenuOpen(false)}
                 />
                 <div
-                  className="menu-popover menu-popover--motion fixed z-40 min-w-36"
+                  role="menu"
+                  className="menu-popover menu-popover--motion fixed z-[56] min-w-[10rem]"
                   style={{ top: menuPos.top, left: menuPos.left }}
                 >
                   <button
                     type="button"
+                    role="menuitem"
                     onClick={() => {
                       setMenuOpen(false)
                       onEdit(activity)
@@ -189,6 +183,7 @@ function ActivityRow({
                   {activity.status === 'planned' ? (
                     <button
                       type="button"
+                      role="menuitem"
                       onClick={() => {
                         setMenuOpen(false)
                         onSkip(activity)
@@ -200,6 +195,7 @@ function ActivityRow({
                   {activity.status === 'skipped' ? (
                     <button
                       type="button"
+                      role="menuitem"
                       onClick={() => {
                         setMenuOpen(false)
                         onUnskip(activity)
@@ -210,6 +206,7 @@ function ActivityRow({
                   ) : null}
                   <button
                     type="button"
+                    role="menuitem"
                     className="menu-popover__destructive"
                     onClick={() => {
                       setMenuOpen(false)
@@ -219,7 +216,7 @@ function ActivityRow({
                     Delete
                   </button>
                 </div>
-              </>
+              </SheetPortal>
             ) : null}
           </div>
         ) : null}
@@ -490,13 +487,12 @@ export function TodayPage() {
           </div>
           <Button
             type="button"
-            variant="secondary"
             onClick={() => {
               setEditing(null)
               setSheetOpen(true)
             }}
           >
-            Add
+            Add activity
           </Button>
         </div>
 

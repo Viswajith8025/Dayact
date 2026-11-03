@@ -144,6 +144,9 @@ body {
 
 .app-shell {
   overscroll-behavior-y: none;
+  background:
+    radial-gradient(ellipse 120% 80% at 50% -20%, var(--color-accent-tint), transparent 55%),
+    var(--color-bg);
 }
 
 a {
@@ -236,6 +239,42 @@ button,
   border-radius: var(--radius-group);
   background: var(--color-surface);
   overflow: hidden;
+  border: 0.5px solid var(--color-separator);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 8px 28px rgba(0, 0, 0, 0.06);
+}
+
+@media (max-resolution: 1.99dppx) {
+  .grouped-list {
+    border-width: 1px;
+  }
+}
+
+.dayact-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.dayact-brand__mark {
+  border-radius: calc(var(--radius-control) + 2px);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.08),
+    0 4px 12px rgba(10, 124, 116, 0.15);
+}
+
+.dayact-brand__name {
+  font-size: var(--text-title);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+  color: var(--color-text);
+}
+
+.dayact-brand__name--hero {
+  font-size: var(--text-large-title);
+  letter-spacing: -0.05em;
 }
 
 .grouped-list > li {
@@ -695,6 +734,9 @@ button,
   border: 0.5px solid var(--color-separator);
   background: var(--color-surface);
   overflow: hidden;
+  box-shadow:
+    0 4px 6px rgba(0, 0, 0, 0.06),
+    0 16px 40px rgba(0, 0, 0, 0.12);
 }
 
 @media (max-resolution: 1.99dppx) {

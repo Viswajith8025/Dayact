@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { CalendarDays, ListChecks, LogOut, Menu, Trophy, X } from 'lucide-react'
 import { AchievementCelebrations } from './AchievementCelebrations'
 import { ConnectionGate } from './ConnectionGate'
+import { DayactBrand } from './DayactBrand'
 import { ThemeToggle } from './ThemeToggle'
 import { useAuth } from '../lib/auth'
 import {
@@ -186,10 +187,10 @@ export function AppShell() {
   }, [])
 
   return (
-    <div className="app-shell flex min-h-dvh flex-col bg-[var(--color-bg)] md:flex-row">
+    <div className="app-shell flex min-h-dvh flex-col md:flex-row">
       <AchievementCelebrations />
-      <aside className="hidden w-56 shrink-0 flex-col bg-[var(--color-bg)] px-[var(--space-4)] py-[var(--space-6)] md:flex">
-        <p className="mb-[var(--space-5)] typo-title text-[var(--color-text)]">Dayact</p>
+      <aside className="hidden w-56 shrink-0 flex-col px-[var(--space-4)] py-[var(--space-6)] md:flex">
+        <DayactBrand className="mb-[var(--space-5)]" />
         <nav className="flex flex-col gap-[var(--space-1)]" aria-label="Main">
           <AppNav layout="sidebar" followUpBadge={followUpBadge} badgePop={badgePop} />
         </nav>
@@ -236,7 +237,7 @@ export function AppShell() {
             </>
           ) : (
             <>
-              <p className="typo-headline text-[var(--color-text)]">Dayact</p>
+              <DayactBrand />
               <div className={mobileMenuOpen ? 'relative z-30' : 'relative'}>
                 <button
                   type="button"
