@@ -6,6 +6,15 @@ type SuggestResponse = {
   error?: string
 }
 
+function friendlySuggestError(raw: string): string {
+  const text = raw.trim()
+  if (!text) return 'Suggestions unavailable right now. Try again in a moment.'
+  if (/GEMINI|not configured|AI is not|Invalid or unauthorized Gemini|Gemini request failed/i.test(text)) {
+    return 'Suggestions unavailable right now. Try again in a moment.'
+  }
+  return 'Suggestions unavailable right now. Try again in a moment.'
+}
+
 async function suggestViaDevProxy(hint: string): Promise<SuggestResponse> {
   const response = await fetch('/api/suggest-activity', {
     method: 'POST',
@@ -54,11 +63,11 @@ export async function suggestActivityTitles(
     : await suggestViaEdge(trimmed)
 
   if (result.error) {
-    return { data: null, error: result.error }
+    return { data: null, error: friendlySuggestError(result.error) }
   }
 
   if (!result.suggestions?.length) {
-    return { data: null, error: 'No suggestions returned. Try again.' }
+    return { data: null, error: friendlySuggestError('No suggestions returned.') }
   }
 
   return { data: result.suggestions, error: null }

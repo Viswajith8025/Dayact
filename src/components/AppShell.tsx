@@ -59,7 +59,11 @@ function AppNav({
               {showBadge ? (
                 <span
                   className="tabular-nums inline-flex min-h-5 min-w-5 items-center justify-center rounded-[var(--radius-control)] bg-[var(--color-accent)] px-1.5 typo-caption text-[var(--color-accent-foreground)]"
-                  aria-label={`${followUpBadge} follow-ups due`}
+                  aria-label={
+                    followUpBadge === 1
+                      ? '1 follow-up due'
+                      : `${followUpBadge} follow-ups due`
+                  }
                 >
                   {followUpBadge}
                 </span>

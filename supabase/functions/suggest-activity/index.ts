@@ -9,7 +9,7 @@ const corsHeaders = {
 const SYSTEM_PROMPT =
   'Suggest daily activity titles for a two-person shared planner. Return JSON only: {"suggestions":["title1","title2","title3"]}. Each title at most 120 characters, sentence case, specific and actionable, no emoji.'
 
-const GEMINI_MODEL = "gemini-2.0-flash"
+const GEMINI_MODEL = "gemini-3.8-flash"
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -20,7 +20,7 @@ function json(body: unknown, status = 200) {
 
 async function fetchGeminiSuggestions(apiKey: string, hint: string) {
   const url =
-    `https://generativeai.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`
   const userText = hint.trim() || "Suggest three useful things to plan for today."
 
   const geminiRes = await fetch(url, {
@@ -34,7 +34,6 @@ async function fetchGeminiSuggestions(apiKey: string, hint: string) {
         },
       ],
       generationConfig: {
-        temperature: 0.6,
         maxOutputTokens: 512,
         responseMimeType: "application/json",
       },

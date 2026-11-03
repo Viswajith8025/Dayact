@@ -46,6 +46,6 @@ test.describe('signed-in flows', () => {
     await page.getByRole('button', { name: 'Suggest titles' }).click()
     await expect(page.getByRole('button', { name: 'Walk for 20 minutes' })).toBeVisible()
     await page.getByRole('button', { name: 'Walk for 20 minutes' }).click()
-    await expect(page.getByLabel('Title')).toHaveValue('Walk for 20 minutes')
+    await expect(page.getByRole('textbox', { name: 'Title' })).toHaveValue('Walk for 20 minutes')
   })
 })

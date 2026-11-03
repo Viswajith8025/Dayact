@@ -123,7 +123,7 @@ export function ActivitySheet({
       aria-modal="true"
       aria-labelledby="activity-sheet-title"
     >
-      <form className="sheet-panel space-y-[var(--space-5)]" onSubmit={handleSubmit}>
+      <form className="sheet-panel space-y-[var(--space-5)]" onSubmit={handleSubmit} noValidate>
         <div className="sheet-grabber" aria-hidden />
         <h2 id="activity-sheet-title" className="typo-title text-[var(--color-text)]">
           {mode === 'create' ? 'Add activity' : 'Edit activity'}
@@ -132,7 +132,6 @@ export function ActivitySheet({
         <Input
           label="Title"
           name="title"
-          required
           maxLength={120}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -154,7 +153,7 @@ export function ActivitySheet({
             </p>
           ) : null}
           {suggestions.length > 0 ? (
-            <ul className="flex flex-col gap-[var(--space-2)]" aria-label="Suggested titles">
+            <ul className="flex flex-col gap-[var(--space-2)]" aria-label="AI suggestions">
               {suggestions.map((suggestion) => (
                 <li key={suggestion}>
                   <button

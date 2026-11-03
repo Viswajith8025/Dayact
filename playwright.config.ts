@@ -11,7 +11,7 @@ function loadDotEnv() {
       if (eq === -1) continue
       const key = trimmed.slice(0, eq).trim()
       const value = trimmed.slice(eq + 1).trim()
-      if (key && process.env[key] === undefined) {
+      if (key) {
         process.env[key] = value
       }
     }

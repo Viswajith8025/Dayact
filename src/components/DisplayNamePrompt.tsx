@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Button } from './Button'
 import { Input } from './Input'
 import { updateDisplayName } from '../lib/activities'
@@ -6,12 +6,24 @@ import { updateDisplayName } from '../lib/activities'
 type DisplayNamePromptProps = {
   userId: string
   onSaved: (displayName: string) => void
+  onDismiss?: () => void
 }
 
-export function DisplayNamePrompt({ userId, onSaved }: DisplayNamePromptProps) {
+export function DisplayNamePrompt({ userId, onSaved, onDismiss }: DisplayNamePromptProps) {
   const [name, setName] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        onDismiss?.()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [onDismiss])
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -48,6 +60,7 @@ export function DisplayNamePrompt({ userId, onSaved }: DisplayNamePromptProps) {
       <form
         className="sheet-panel w-full max-w-md space-y-[var(--space-5)]"
         onSubmit={handleSubmit}
+        noValidate
       >
         <div className="sheet-grabber" aria-hidden />
         <div className="space-y-[var(--space-2)]">
@@ -63,7 +76,6 @@ export function DisplayNamePrompt({ userId, onSaved }: DisplayNamePromptProps) {
           label="Display name"
           name="display_name"
           autoComplete="nickname"
-          required
           value={name}
           onChange={(e) => setName(e.target.value)}
         />

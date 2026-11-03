@@ -397,7 +397,8 @@ export function userBadgeColor(userId: string): string {
 export function ownerInitial(displayName: string): string {
   const trimmed = displayName.trim()
   if (!trimmed) return '?'
-  return trimmed.charAt(0).toUpperCase()
+  const match = trimmed.match(/[A-Za-z0-9]/)
+  return match ? match[0].toUpperCase() : '?'
 }
 
 export type AchievementDefinition = {

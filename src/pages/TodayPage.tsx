@@ -1,6 +1,6 @@
 import { addDays, format } from 'date-fns'
 import { ChevronLeft, ChevronRight, Flag, MoreVertical } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ActivitySheet } from '../components/ActivitySheet'
 import { Button } from '../components/Button'
@@ -58,9 +58,33 @@ function ActivityRow({
   onDelete,
 }: ActivityRowProps) {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
+  const menuBtnRef = useRef<HTMLButtonElement>(null)
   const isDone = activity.status === 'done'
   const isSkipped = activity.status === 'skipped'
   const muted = isDone || isSkipped
+  const hasOpenFollowUp = Boolean(activity.follow_up_on && !activity.follow_up_done)
+
+  useLayoutEffect(() => {
+    if (!menuOpen) {
+      setMenuPos(null)
+      return
+    }
+    const el = menuBtnRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    const menuWidth = 144
+    const menuHeight = 132
+    let top = rect.bottom + 4
+    if (top + menuHeight > window.innerHeight - 8) {
+      top = Math.max(8, rect.top - menuHeight - 4)
+    }
+    const left = Math.min(
+      Math.max(8, rect.right - menuWidth),
+      window.innerWidth - menuWidth - 8,
+    )
+    setMenuPos({ top, left })
+  }, [menuOpen])
 
   return (
     <li className={muted ? 'opacity-80' : undefined}>
@@ -94,7 +118,7 @@ function ActivityRow({
             >
               {activity.title}
             </p>
-            {activity.follow_up_on ? (
+            {hasOpenFollowUp ? (
               <span className="typo-caption text-[var(--color-text-muted)] inline-flex items-center gap-1">
                 <Flag size={14} aria-hidden />
                 Follow-up
@@ -110,22 +134,27 @@ function ActivityRow({
         {isOwn ? (
           <div className="relative shrink-0">
             <button
+              ref={menuBtnRef}
               type="button"
               aria-label="Activity actions"
+              aria-expanded={menuOpen}
               className="btn btn--icon btn--tertiary"
               onClick={() => setMenuOpen((open) => !open)}
             >
               <MoreVertical size={20} aria-hidden />
             </button>
-            {menuOpen ? (
+            {menuOpen && menuPos ? (
               <>
                 <button
                   type="button"
-                  className="fixed inset-0 z-10"
+                  className="fixed inset-0 z-30"
                   aria-label="Close menu"
                   onClick={() => setMenuOpen(false)}
                 />
-                <div className="menu-popover absolute right-0 top-full z-20 mt-1 min-w-36">
+                <div
+                  className="menu-popover fixed z-40 min-w-36"
+                  style={{ top: menuPos.top, left: menuPos.left }}
+                >
                   <button
                     type="button"
                     onClick={() => {
@@ -171,6 +200,7 @@ export function TodayPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const titleSentinelRef = useRef<HTMLDivElement>(null)
+  const [displayNamePromptOpen, setDisplayNamePromptOpen] = useState(true)
 
   const today = localDateString()
   const dateParam = searchParams.get('date')
@@ -358,7 +388,13 @@ export function TodayPage() {
 
   const headingDate = format(selectedDateObj, 'EEEE, d MMMM')
   const showDisplayNamePrompt =
-    user && !profileLoading && displayName !== null && displayName.trim() === ''
+    user &&
+    !profileLoading &&
+    displayName !== null &&
+    displayName.trim() === '' &&
+    displayNamePromptOpen
+
+  const pageTitle = selectedDate === today ? 'Today' : format(selectedDateObj, 'EEE, d MMM')
 
   const emptyCopy =
     selectedDate === today
@@ -372,14 +408,16 @@ export function TodayPage() {
           userId={user.id}
           onSaved={(name) => {
             setDisplayName(name)
+            setDisplayNamePromptOpen(true)
           }}
+          onDismiss={() => setDisplayNamePromptOpen(false)}
         />
       ) : null}
 
       <header className="space-y-[var(--space-4)]">
         <div className="flex flex-wrap items-end justify-between gap-[var(--space-3)]">
           <div>
-            <h1 className="typo-large-title text-[var(--color-text)]">Today</h1>
+            <h1 className="typo-large-title text-[var(--color-text)]">{pageTitle}</h1>
             <p className="typo-subhead text-[var(--color-text-muted)]">{headingDate}</p>
             <div ref={titleSentinelRef} className="h-px w-full" aria-hidden />
           </div>
