@@ -37,6 +37,7 @@ export function ActivitySheet({
   const [suggesting, setSuggesting] = useState(false)
   const [suggestError, setSuggestError] = useState<string | null>(null)
   const [suggestions, setSuggestions] = useState<string[]>([])
+  const [suggestSlow, setSuggestSlow] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -49,7 +50,17 @@ export function ActivitySheet({
     setSuggesting(false)
     setSuggestError(null)
     setSuggestions([])
+    setSuggestSlow(false)
   }, [open, initial, defaultPlannedFor])
+
+  useEffect(() => {
+    if (!suggesting) {
+      setSuggestSlow(false)
+      return
+    }
+    const timer = window.setTimeout(() => setSuggestSlow(true), 5000)
+    return () => window.clearTimeout(timer)
+  }, [suggesting])
 
   useEffect(() => {
     if (!open) return
@@ -151,6 +162,11 @@ export function ActivitySheet({
             Suggest titles
           </Button>
           {suggesting ? <div className="suggest-shimmer" aria-hidden /> : null}
+          {suggestSlow && suggesting ? (
+            <p role="status" className="typo-footnote text-[var(--color-text-muted)]">
+              Still working…
+            </p>
+          ) : null}
           {suggestError ? (
             <p role="alert" className="typo-footnote text-[var(--color-danger)]">
               {suggestError}

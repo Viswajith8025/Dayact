@@ -321,6 +321,18 @@ export function TodayPage() {
   }, [loadActivities])
 
   useEffect(() => {
+    if (!deleteTarget) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setDeleteTarget(null)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [deleteTarget])
+
+  useEffect(() => {
     if (dateParam && !parsePlannedDate(dateParam)) {
       setDateInUrl(today)
     }

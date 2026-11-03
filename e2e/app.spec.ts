@@ -48,4 +48,23 @@ test.describe('signed-in flows', () => {
     await page.getByRole('button', { name: 'Walk for 20 minutes' }).click()
     await expect(page.getByRole('textbox', { name: 'Title' })).toHaveValue('Walk for 20 minutes')
   })
+
+  test('delete confirmation closes on Escape', async ({ page }) => {
+    const title = `[QA] delete-escape-${Date.now()}`
+    await page.getByRole('button', { name: 'Add' }).click()
+    await page.getByRole('textbox', { name: 'Title' }).fill(title)
+    await page.getByRole('button', { name: 'Save' }).click()
+    await expect(page.getByText(title)).toBeVisible()
+
+    await page.getByRole('button', { name: 'Activity actions' }).click()
+    await page.getByRole('button', { name: 'Delete' }).click()
+    await expect(page.getByRole('alertdialog')).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('alertdialog')).toHaveCount(0)
+
+    await page.getByRole('button', { name: 'Activity actions' }).click()
+    await page.getByRole('button', { name: 'Delete' }).click()
+    await page.getByRole('button', { name: 'Delete' }).click()
+    await expect(page.getByText(title)).toHaveCount(0)
+  })
 })

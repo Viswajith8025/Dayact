@@ -271,8 +271,8 @@ export function AppShell() {
         </main>
 
         <nav
-          className="glass-bar fixed inset-x-0 bottom-0 z-20 flex px-[var(--space-2)] pb-[env(safe-area-inset-bottom)] md:hidden"
-          style={{ minHeight: 'calc(var(--nav-height) + env(safe-area-inset-bottom))' }}
+          className="glass-bar fixed inset-x-0 bottom-0 z-20 flex px-[var(--space-2)] pb-[calc(env(safe-area-inset-bottom)+var(--space-6))] md:hidden"
+          style={{ minHeight: 'calc(var(--nav-height) + env(safe-area-inset-bottom) + var(--space-6))' }}
           aria-label="Main"
         >
           <AppNav layout="tabs" followUpBadge={followUpBadge} badgePop={badgePop} />
