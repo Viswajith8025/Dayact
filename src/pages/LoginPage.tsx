@@ -62,6 +62,7 @@ export function LoginPage() {
     <div className="flex min-h-dvh items-start justify-center bg-[var(--color-bg)] px-[var(--space-page)] py-[var(--space-section)] pt-[max(var(--space-section),env(safe-area-inset-top))]">
       <div className="w-full max-w-md space-y-[var(--space-section)]">
         <header className="space-y-[var(--space-2)]">
+          <img src="/icon.svg" alt="" className="h-14 w-14" width={56} height={56} aria-hidden />
           <h1 className="typo-large-title text-[var(--color-text)]">Dayact</h1>
           <p className="typo-subhead text-[var(--color-text-muted)]">
             Sign in with the account your team owner created for you.

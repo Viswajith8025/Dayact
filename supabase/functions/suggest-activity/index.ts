@@ -1,0 +1,131 @@
+import "jsr:@supabase/functions-js/edge-runtime.d.ts"
+import { createClient } from "jsr:@supabase/supabase-js@2"
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+}
+
+const SYSTEM_PROMPT =
+  'Suggest daily activity titles for a two-person shared planner. Return JSON only: {"suggestions":["title1","title2","title3"]}. Each title at most 120 characters, sentence case, specific and actionable, no emoji.'
+
+const GEMINI_MODEL = "gemini-2.0-flash"
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  })
+}
+
+async function fetchGeminiSuggestions(apiKey: string, hint: string) {
+  const url =
+    `https://generativeai.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`
+  const userText = hint.trim() || "Suggest three useful things to plan for today."
+
+  const geminiRes = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: `${SYSTEM_PROMPT}\n\nUser context: ${userText}` }],
+        },
+      ],
+      generationConfig: {
+        temperature: 0.6,
+        maxOutputTokens: 512,
+        responseMimeType: "application/json",
+      },
+    }),
+  })
+
+  if (!geminiRes.ok) {
+    const detail = (await geminiRes.text()).slice(0, 200)
+    if (geminiRes.status === 400 || geminiRes.status === 403) {
+      return {
+        error:
+          "Invalid or unauthorized Gemini key. Set GEMINI_API_KEY from Google AI Studio.",
+      }
+    }
+    return { error: `Gemini request failed (${geminiRes.status}). ${detail}` }
+  }
+
+  const geminiData = await geminiRes.json()
+  const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text
+  if (typeof text !== "string") {
+    return { error: "Could not read AI response. Try again." }
+  }
+
+  try {
+    const parsed = JSON.parse(text) as { suggestions?: unknown }
+    const suggestions = Array.isArray(parsed.suggestions)
+      ? parsed.suggestions
+        .filter((item): item is string => typeof item === "string")
+        .map((item) => item.trim().slice(0, 120))
+        .filter((item) => item.length > 0)
+        .slice(0, 3)
+      : []
+
+    if (suggestions.length === 0) {
+      return { error: "No suggestions returned. Try again." }
+    }
+
+    return { suggestions }
+  } catch {
+    return { error: "Could not read AI response. Try again." }
+  }
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders })
+  }
+
+  if (req.method !== "POST") {
+    return json({ error: "Method not allowed" }, 405)
+  }
+
+  const authHeader = req.headers.get("Authorization")
+  if (!authHeader) {
+    return json({ error: "Unauthorized" }, 401)
+  }
+
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+    { global: { headers: { Authorization: authHeader } } },
+  )
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (userError || !user) {
+    return json({ error: "Unauthorized" }, 401)
+  }
+
+  const geminiKey = Deno.env.get("GEMINI_API_KEY") ?? Deno.env.get("GOOGLE_API_KEY")
+  if (!geminiKey) {
+    return json({ error: "AI is not configured on the server (add GEMINI_API_KEY secret)." }, 503)
+  }
+
+  let hint = ""
+  try {
+    const payload = await req.json()
+    if (typeof payload.hint === "string") {
+      hint = payload.hint.trim().slice(0, 500)
+    }
+  } catch {
+    return json({ error: "Invalid request body." }, 400)
+  }
+
+  const result = await fetchGeminiSuggestions(geminiKey, hint)
+  if ("error" in result && result.error) {
+    return json({ error: result.error }, 502)
+  }
+
+  return json(result)
+})

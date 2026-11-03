@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Button } from './Button'
 import { Input } from './Input'
 import type { ActivityWithOwner } from '../lib/activities'
+import { suggestActivityTitles } from '../lib/groqSuggest'
 
 export type ActivitySheetMode = 'create' | 'edit'
 
@@ -33,6 +34,9 @@ export function ActivitySheet({
   const [followUpOn, setFollowUpOn] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [suggesting, setSuggesting] = useState(false)
+  const [suggestError, setSuggestError] = useState<string | null>(null)
+  const [suggestions, setSuggestions] = useState<string[]>([])
 
   useEffect(() => {
     if (!open) return
@@ -42,6 +46,9 @@ export function ActivitySheet({
     setFollowUpOn(initial?.follow_up_on ?? '')
     setError(null)
     setSaving(false)
+    setSuggesting(false)
+    setSuggestError(null)
+    setSuggestions([])
   }, [open, initial, defaultPlannedFor])
 
   useEffect(() => {
@@ -94,6 +101,21 @@ export function ActivitySheet({
     onClose()
   }
 
+  async function handleSuggest() {
+    if (suggesting || saving) return
+    setSuggesting(true)
+    setSuggestError(null)
+    const hint = [title.trim(), notes.trim()].filter(Boolean).join('. ')
+    const result = await suggestActivityTitles(hint)
+    setSuggesting(false)
+    if (result.error) {
+      setSuggestError(result.error)
+      setSuggestions([])
+      return
+    }
+    setSuggestions(result.data ?? [])
+  }
+
   return (
     <div
       className="sheet-backdrop"
@@ -115,6 +137,38 @@ export function ActivitySheet({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
         />
+
+        <div className="space-y-[var(--space-2)]">
+          <Button
+            type="button"
+            variant="tertiary"
+            loading={suggesting}
+            disabled={saving}
+            onClick={() => void handleSuggest()}
+          >
+            Suggest titles
+          </Button>
+          {suggestError ? (
+            <p role="alert" className="typo-footnote text-[var(--color-danger)]">
+              {suggestError}
+            </p>
+          ) : null}
+          {suggestions.length > 0 ? (
+            <ul className="flex flex-col gap-[var(--space-2)]" aria-label="Suggested titles">
+              {suggestions.map((suggestion) => (
+                <li key={suggestion}>
+                  <button
+                    type="button"
+                    className="btn btn--secondary w-full justify-start text-left"
+                    onClick={() => setTitle(suggestion)}
+                  >
+                    {suggestion}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
 
         <label className="flex flex-col gap-[var(--space-2)] typo-footnote text-[var(--color-text-muted)]">
           <span>Notes (optional)</span>

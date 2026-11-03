@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Dayact">
+  <rect width="512" height="512" rx="112" fill="#f5f5f7"/>
+  <circle cx="196" cy="248" r="28" fill="#0a7c74"/>
+  <circle cx="316" cy="248" r="28" fill="#0a7c74"/>
+  <path
+    d="M148 292c36 56 180 56 216 0"
+    fill="none"
+    stroke="#0a7c74"
+    stroke-width="28"
+    stroke-linecap="round"
+  />
+  <path
+    d="M292 168l44 44-88 88-52-52"
+    fill="none"
+    stroke="#0a7c74"
+    stroke-width="26"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+</svg>

@@ -5,4 +5,8 @@ dist/
 .env.*.local
 .DS_Store
 *.log
+test-results/
+playwright-report/
+blob-report/
+.playwright/
 .agents/skills/
