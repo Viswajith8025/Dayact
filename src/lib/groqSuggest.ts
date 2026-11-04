@@ -1,74 +1,46 @@
-import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 
-type SuggestResponse = {
-  suggestions?: string[]
-  error?: string
-}
+type SuggestResponse = { suggestions?: string[]; days?: { date: string; suggestions: string[] }[]; error?: string }
 
-function friendlySuggestError(raw: string): string {
-  const text = raw.trim()
-  if (!text) return 'Suggestions unavailable right now. Try again in a moment.'
-  if (/GEMINI|not configured|AI is not|Invalid or unauthorized Gemini|Gemini request failed/i.test(text)) {
-    return 'Suggestions unavailable right now. Try again in a moment.'
+function friendlySuggestError(text: string): string {
+  if (/GEMINI|not configured|Invalid or unauthorized/i.test(text)) {
+    return 'Suggestions unavailable right now. Try again later.'
   }
-  return 'Suggestions unavailable right now. Try again in a moment.'
+  return text
 }
 
-async function suggestViaDevProxy(hint: string): Promise<SuggestResponse> {
+async function suggestViaDevProxy(body: object): Promise<SuggestResponse> {
   const response = await fetch('/api/suggest-activity', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ hint: hint.trim().slice(0, 500) }),
+    body: JSON.stringify(body),
   })
   const payload = (await response.json()) as SuggestResponse
-  if (!response.ok) {
-    return { error: payload.error ?? 'Could not reach AI. Try again.' }
-  }
+  if (!response.ok) return { error: payload.error ?? 'Could not reach AI. Try again.' }
   return payload
 }
 
-async function suggestViaEdge(hint: string): Promise<SuggestResponse> {
-  const { data, error } = await supabase.functions.invoke<SuggestResponse>('suggest-activity', {
-    body: { hint: hint.trim().slice(0, 500) },
-  })
-
-  if (error) {
-    if (error instanceof FunctionsHttpError) {
-      try {
-        const payload = (await error.context.json()) as SuggestResponse
-        if (payload.error) {
-          return { error: payload.error }
-        }
-      } catch {
-        /* use generic message below */
-      }
-    }
-    return { error: error.message || 'Could not reach AI. Try again.' }
-  }
-
-  if (data?.error) {
-    return { error: data.error }
-  }
-
-  return data ?? { error: 'No suggestions returned. Try again.' }
+async function suggestViaEdge(body: object): Promise<SuggestResponse> {
+  const { data, error } = await supabase.functions.invoke<SuggestResponse>('suggest-activity', { body })
+  if (error) return { error: error.message || 'Could not reach AI. Try again.' }
+  return data ?? { error: 'No suggestions returned.' }
 }
 
-export async function suggestActivityTitles(
-  hint: string,
-): Promise<{ data: string[] | null; error: string | null }> {
+export async function suggestActivityTitles(hint: string) {
   const trimmed = hint.trim().slice(0, 500)
   const result = import.meta.env.DEV
-    ? await suggestViaDevProxy(trimmed)
-    : await suggestViaEdge(trimmed)
-
-  if (result.error) {
-    return { data: null, error: friendlySuggestError(result.error) }
-  }
-
-  if (!result.suggestions?.length) {
-    return { data: null, error: friendlySuggestError('No suggestions returned.') }
-  }
-
+    ? await suggestViaDevProxy({ mode: 'titles', hint: trimmed })
+    : await suggestViaEdge({ mode: 'titles', hint: trimmed })
+  if (result.error) return { data: null as string[] | null, error: friendlySuggestError(result.error) }
+  if (!result.suggestions?.length) return { data: null, error: friendlySuggestError('No suggestions returned.') }
   return { data: result.suggestions, error: null }
+}
+
+export async function suggestPlanWeek(historyJson: string) {
+  const result = import.meta.env.DEV
+    ? await suggestViaDevProxy({ mode: 'plan_week', history: historyJson.slice(0, 12000) })
+    : await suggestViaEdge({ mode: 'plan_week', history: historyJson.slice(0, 12000) })
+  if (result.error) return { data: null, error: friendlySuggestError(result.error) }
+  if (!result.days?.length) return { data: null, error: friendlySuggestError('No plan returned.') }
+  return { data: result.days, error: null }
 }

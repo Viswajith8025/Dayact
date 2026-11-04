@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { ActivitySheet } from '../components/ActivitySheet'
 import { Button } from '../components/Button'
+import { RescheduleReasonSheet } from '../components/RescheduleReasonSheet'
+import { followUpTone, followUpWittyLine } from '../lib/followUpCopy'
 import { useAuth } from '../lib/auth'
 import {
   clearFollowUp,
@@ -10,7 +12,7 @@ import {
   listOpenFollowups,
   localDateString,
   notifyActivitiesChanged,
-  ownerInitial,
+  partnerAvatarLabel,
   rescheduleFollowUp,
   setFollowUpDone,
   update,
@@ -31,7 +33,7 @@ type FollowUpRowProps = {
   today: string
   onEdit: (activity: ActivityWithOwner) => void
   onDone: (activity: ActivityWithOwner) => void
-  onReschedule: (activity: ActivityWithOwner, date: string) => void
+  onReschedule: (activity: ActivityWithOwner) => void
   onClear: (activity: ActivityWithOwner) => void
   overdue: boolean
 }
@@ -46,8 +48,11 @@ function FollowUpRow({
   onClear,
   overdue,
 }: FollowUpRowProps) {
-  const [rescheduleDate, setRescheduleDate] = useState(activity.follow_up_on ?? today)
-  const [showReschedule, setShowReschedule] = useState(false)
+  const witty = followUpWittyLine(
+    followUpTone(activity.follow_up_on!, today),
+    activity.id,
+    activity.follow_up_on!,
+  )
 
   return (
     <li>
@@ -57,7 +62,7 @@ function FollowUpRow({
           style={{ backgroundColor: userBadgeColor(activity.user_id) }}
           aria-hidden
         >
-          {ownerInitial(activity.display_name)}
+          {partnerAvatarLabel(activity)}
         </div>
 
         <div className="min-w-0 flex-1 space-y-[var(--space-2)]">
@@ -71,6 +76,12 @@ function FollowUpRow({
               >
                 {formatFollowUpRelative(activity.follow_up_on!, today)}
               </p>
+              <p className="typo-footnote text-[var(--color-accent)]">{witty}</p>
+              {activity.reschedule_reason ? (
+                <p className="typo-footnote text-[var(--color-text-muted)]">
+                  Last reason: {activity.reschedule_reason}
+                </p>
+              ) : null}
               <p className="typo-footnote text-[var(--color-text-muted)]">
                 {activity.display_name.trim() || 'Teammate'} ·{' '}
                 {formatPlannedForSecondary(activity.planned_for)}
@@ -86,6 +97,12 @@ function FollowUpRow({
               >
                 {formatFollowUpRelative(activity.follow_up_on!, today)}
               </p>
+              <p className="typo-footnote text-[var(--color-text-muted)]">{witty}</p>
+              {activity.reschedule_reason ? (
+                <p className="typo-footnote text-[var(--color-text-muted)]">
+                  Last reason: {activity.reschedule_reason}
+                </p>
+              ) : null}
               <p className="typo-footnote text-[var(--color-text-muted)]">
                 {activity.display_name.trim() || 'Teammate'} ·{' '}
                 {formatPlannedForSecondary(activity.planned_for)}
@@ -98,33 +115,11 @@ function FollowUpRow({
               <Button type="button" variant="tertiary" onClick={() => onDone(activity)}>
                 Done
               </Button>
-              <Button type="button" variant="tertiary" onClick={() => setShowReschedule((open) => !open)}>
+              <Button type="button" variant="tertiary" onClick={() => onReschedule(activity)}>
                 Reschedule
               </Button>
               <Button type="button" variant="tertiary" onClick={() => onClear(activity)}>
                 Remove follow-up
-              </Button>
-            </div>
-          ) : null}
-
-          {isOwn && showReschedule ? (
-            <div className="flex flex-wrap items-center gap-[var(--space-2)]">
-              <input
-                type="date"
-                value={rescheduleDate}
-                onChange={(e) => setRescheduleDate(e.target.value)}
-                className="field-input tabular-nums w-auto"
-                aria-label="New follow-up date"
-              />
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => {
-                  onReschedule(activity, rescheduleDate)
-                  setShowReschedule(false)
-                }}
-              >
-                Save
               </Button>
             </div>
           ) : null}
@@ -159,6 +154,7 @@ export function FollowupsPage() {
   const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState<ActivityWithOwner | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
+  const [rescheduleTarget, setRescheduleTarget] = useState<ActivityWithOwner | null>(null)
 
   useEffect(() => {
     const el = titleSentinelRef.current
@@ -215,6 +211,7 @@ export function FollowupsPage() {
     notes: string | null
     planned_for: string
     follow_up_on: string | null
+    planned_time: string | null
   }) {
     if (!editing) return 'Nothing to edit'
     const result = await update(editing.id, payload)
@@ -278,12 +275,7 @@ export function FollowupsPage() {
                       return result.error
                     })
                   }
-                  onReschedule={(row, date) =>
-                    applyMutation(async () => {
-                      const result = await rescheduleFollowUp(row.id, date)
-                      return result.error
-                    })
-                  }
+                  onReschedule={setRescheduleTarget}
                   onClear={(row) =>
                     applyMutation(async () => {
                       const result = await clearFollowUp(row.id)
@@ -308,6 +300,23 @@ export function FollowupsPage() {
           setEditing(null)
         }}
         onSave={handleSave}
+      />
+
+      <RescheduleReasonSheet
+        open={Boolean(rescheduleTarget)}
+        title="Reschedule follow-up"
+        dateLabel="New follow-up date"
+        initialDate={rescheduleTarget?.follow_up_on ?? today}
+        onClose={() => setRescheduleTarget(null)}
+        onConfirm={async (date, reason) => {
+          if (!rescheduleTarget) return 'Nothing to reschedule'
+          const result = await rescheduleFollowUp(rescheduleTarget.id, date, reason)
+          if (result.error) return result.error
+          setRescheduleTarget(null)
+          notifyActivitiesChanged()
+          await load()
+          return null
+        }}
       />
     </section>
   )

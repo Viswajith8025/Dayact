@@ -1,150 +1,68 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts"
-import { createClient } from "jsr:@supabase/supabase-js@2"
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-}
-
-const SYSTEM_PROMPT =
-  'Suggest daily activity titles for a two-person shared planner. Return JSON only: {"suggestions":["title1","title2","title3"]}. Each title at most 120 characters, sentence case, specific and actionable, no emoji.'
-
 const GEMINI_MODELS = ["gemini-3.5-flash-lite", "gemini-3.8-flash"]
 
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  })
-}
+const TITLE_PROMPT =
+  'Suggest daily activity titles for a two-person shared planner. Return JSON only: {"suggestions":["title1","title2","title3"]}. Each title at most 120 characters.'
 
-async function fetchGeminiWithModel(apiKey: string, hint: string, model: string) {
-  const url =
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`
-  const userText = hint.trim() || "Suggest three useful things to plan for today."
+const WEEK_PROMPT =
+  'Given recent activity history JSON, suggest a balanced week plan. Return JSON only: {"days":[{"date":"YYYY-MM-DD","suggestions":["title1","title2"]}]}. Use the next 7 calendar days starting tomorrow. Max 3 suggestions per day.'
 
-  const geminiRes = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: `${SYSTEM_PROMPT}\n\nUser context: ${userText}` }],
-        },
-      ],
-      generationConfig: {
-        maxOutputTokens: 512,
-        responseMimeType: "application/json",
-      },
-    }),
-  })
-
-  if (!geminiRes.ok) {
-    const detail = (await geminiRes.text()).slice(0, 200)
-    if (geminiRes.status === 404 || geminiRes.status === 503 || geminiRes.status === 429) {
-      return { retry: true as const, error: `Model ${model} unavailable.` }
-    }
-    if (geminiRes.status === 400 || geminiRes.status === 403) {
-      return {
-        retry: false as const,
-        error:
-          "Invalid or unauthorized Gemini key. Set GEMINI_API_KEY from Google AI Studio.",
-      }
-    }
-    return {
-      retry: false as const,
-      error: `Gemini request failed (${geminiRes.status}). ${detail}`,
-    }
-  }
-
-  const geminiData = await geminiRes.json()
-  const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text
-  if (typeof text !== "string") {
-    return { retry: false as const, error: "Could not read AI response. Try again." }
-  }
-
-  try {
-    const parsed = JSON.parse(text) as { suggestions?: unknown }
-    const suggestions = Array.isArray(parsed.suggestions)
-      ? parsed.suggestions
-        .filter((item): item is string => typeof item === "string")
-        .map((item) => item.trim().slice(0, 120))
-        .filter((item) => item.length > 0)
-        .slice(0, 3)
-      : []
-
-    if (suggestions.length === 0) {
-      return { retry: false as const, error: "No suggestions returned. Try again." }
-    }
-
-    return { retry: false as const, suggestions }
-  } catch {
-    return { retry: false as const, error: "Could not read AI response. Try again." }
-  }
-}
-
-async function fetchGeminiSuggestions(apiKey: string, hint: string) {
-  let lastError = "Could not reach AI. Try again."
+async function fetchGemini(apiKey: string, system: string, userText: string) {
+  let lastError = "Could not reach AI."
   for (const model of GEMINI_MODELS) {
-    const result = await fetchGeminiWithModel(apiKey, hint, model)
-    if ("suggestions" in result && result.suggestions) {
-      return { suggestions: result.suggestions }
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: `${system}\n\n${userText}` }] }],
+        generationConfig: { maxOutputTokens: 2048, responseMimeType: "application/json" },
+      }),
+    })
+    if (!res.ok) {
+      if (res.status === 404 || res.status === 503 || res.status === 429) continue
+      return { error: `Gemini failed (${res.status})` }
     }
-    if (result.error) lastError = result.error
-    if (!result.retry) break
+    const json = await res.json()
+    const text = json.candidates?.[0]?.content?.parts?.[0]?.text
+    if (typeof text !== "string") return { error: "Bad AI response" }
+    try {
+      return { parsed: JSON.parse(text) }
+    } catch {
+      return { error: "Bad AI response" }
+    }
   }
   return { error: lastError }
 }
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders })
+    return new Response("ok", {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+      },
+    })
   }
 
-  if (req.method !== "POST") {
-    return json({ error: "Method not allowed" }, 405)
+  const key = Deno.env.get("GEMINI_API_KEY") ?? Deno.env.get("GOOGLE_API_KEY")
+  if (!key) {
+    return new Response(JSON.stringify({ error: "AI is not configured." }), { status: 503 })
   }
 
-  const authHeader = req.headers.get("Authorization")
-  if (!authHeader) {
-    return json({ error: "Unauthorized" }, 401)
+  const body = await req.json().catch(() => ({}))
+  const mode = body.mode as string
+
+  if (mode === "plan_week") {
+    const result = await fetchGemini(WEEK_PROMPT, String(body.history ?? ""))
+    if (result.error) return new Response(JSON.stringify({ error: result.error }), { status: 502 })
+    return new Response(JSON.stringify({ days: result.parsed?.days ?? [] }), {
+      headers: { "Content-Type": "application/json" },
+    })
   }
 
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-    { global: { headers: { Authorization: authHeader } } },
-  )
-
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser()
-
-  if (userError || !user) {
-    return json({ error: "Unauthorized" }, 401)
-  }
-
-  const geminiKey = Deno.env.get("GEMINI_API_KEY") ?? Deno.env.get("GOOGLE_API_KEY")
-  if (!geminiKey) {
-    return json({ error: "AI is not configured on the server (add GEMINI_API_KEY secret)." }, 503)
-  }
-
-  let hint = ""
-  try {
-    const payload = await req.json()
-    if (typeof payload.hint === "string") {
-      hint = payload.hint.trim().slice(0, 500)
-    }
-  } catch {
-    return json({ error: "Invalid request body." }, 400)
-  }
-
-  const result = await fetchGeminiSuggestions(geminiKey, hint)
-  if ("error" in result && result.error) {
-    return json({ error: result.error }, 502)
-  }
-
-  return json(result)
+  const hint = String(body.hint ?? "")
+  const result = await fetchGemini(TITLE_PROMPT, hint || "Suggest three useful things for today.")
+  if (result.error) return new Response(JSON.stringify({ error: result.error }), { status: 502 })
+  const suggestions = Array.isArray(result.parsed?.suggestions) ? result.parsed.suggestions : []
+  return new Response(JSON.stringify({ suggestions }), { headers: { "Content-Type": "application/json" } })
 })

@@ -1,6 +1,7 @@
 import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 
-const DISMISS_KEY = 'dayact-install-dismissed'
+const SNOOZE_KEY = 'dayact-install-snooze-until'
+const SNOOZE_MS = 3 * 24 * 60 * 60 * 1000
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>
@@ -11,6 +12,8 @@ type InstallContextValue = {
   canPromptInstall: boolean
   showIosHelp: boolean
   isStandalone: boolean
+  barVisible: boolean
+  pillVisible: boolean
   promptInstall: () => Promise<void>
   dismissInstallOffer: () => void
 }
@@ -33,14 +36,25 @@ function isStandaloneDisplay(): boolean {
   )
 }
 
+function readSnoozed(): boolean {
+  const raw = localStorage.getItem(SNOOZE_KEY)
+  if (!raw) return false
+  const until = Number(raw)
+  if (!Number.isFinite(until) || until <= Date.now()) {
+    localStorage.removeItem(SNOOZE_KEY)
+    return false
+  }
+  return true
+}
+
 export function InstallProvider({ children }: { children: ReactNode }) {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null)
-  const [dismissed, setDismissed] = useState(() => localStorage.getItem(DISMISS_KEY) === '1')
+  const [snoozed, setSnoozed] = useState(() => readSnoozed())
   const standalone = isStandaloneDisplay()
   const ios = isIosDevice()
 
   useEffect(() => {
-    if (standalone || dismissed) return
+    if (standalone) return
 
     const onBeforeInstall = (event: Event) => {
       event.preventDefault()
@@ -49,11 +63,11 @@ export function InstallProvider({ children }: { children: ReactNode }) {
 
     window.addEventListener('beforeinstallprompt', onBeforeInstall)
     return () => window.removeEventListener('beforeinstallprompt', onBeforeInstall)
-  }, [standalone, dismissed])
+  }, [standalone])
 
   const dismissInstallOffer = useCallback(() => {
-    localStorage.setItem(DISMISS_KEY, '1')
-    setDismissed(true)
+    localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_MS))
+    setSnoozed(true)
     setDeferred(null)
   }, [])
 
@@ -64,15 +78,21 @@ export function InstallProvider({ children }: { children: ReactNode }) {
     dismissInstallOffer()
   }, [deferred, dismissInstallOffer])
 
+  const canInstall = !standalone && (Boolean(deferred) || ios)
+  const barVisible = canInstall && !snoozed && (Boolean(deferred) || ios)
+  const pillVisible = canInstall && snoozed
+
   const value = useMemo(
     () => ({
-      canPromptInstall: Boolean(deferred) && !standalone && !dismissed,
-      showIosHelp: ios && !standalone && !dismissed,
+      canPromptInstall: Boolean(deferred) && !standalone,
+      showIosHelp: ios && !standalone,
       isStandalone: standalone,
+      barVisible,
+      pillVisible,
       promptInstall,
       dismissInstallOffer,
     }),
-    [deferred, dismissed, ios, standalone, promptInstall, dismissInstallOffer],
+    [deferred, ios, standalone, barVisible, pillVisible, promptInstall, dismissInstallOffer],
   )
 
   return createElement(InstallContext.Provider, { value }, children)
@@ -87,6 +107,6 @@ export function useInstall(): InstallContextValue {
 }
 
 export function useInstallOfferVisible(): boolean {
-  const { canPromptInstall, showIosHelp, isStandalone } = useInstall()
-  return !isStandalone && (canPromptInstall || showIosHelp)
+  const { barVisible } = useInstall()
+  return barVisible
 }

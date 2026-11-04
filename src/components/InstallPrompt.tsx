@@ -25,7 +25,7 @@ export function InstallPromptBar({ anchor = 'tabs' }: { anchor?: 'tabs' | 'scree
           <p className="typo-subhead font-semibold text-[var(--color-text)]">Install Dayact</p>
           {canPromptInstall ? (
             <p className="typo-footnote text-[var(--color-text-muted)]">
-              Add to your home screen for quick access.
+              Add to your home screen for quick access and follow-up reminders.
             </p>
           ) : showIosHelp ? (
             <p className="typo-footnote text-[var(--color-text-muted)] inline-flex items-center gap-1">
@@ -43,7 +43,7 @@ export function InstallPromptBar({ anchor = 'tabs' }: { anchor?: 'tabs' | 'scree
           <button
             type="button"
             className="btn btn--icon btn--tertiary"
-            aria-label="Dismiss install hint"
+            aria-label="Snooze install hint"
             onClick={dismissInstallOffer}
           >
             <X size={18} aria-hidden />
@@ -54,11 +54,29 @@ export function InstallPromptBar({ anchor = 'tabs' }: { anchor?: 'tabs' | 'scree
   )
 }
 
+export function InstallHeaderPill() {
+  const { pillVisible, canPromptInstall, showIosHelp, promptInstall } = useInstall()
+  if (!pillVisible) return null
+
+  return (
+    <button
+      type="button"
+      className="install-pill"
+      onClick={() => {
+        if (canPromptInstall) void promptInstall()
+      }}
+      title={showIosHelp && !canPromptInstall ? 'Share → Add to Home Screen' : 'Install Dayact'}
+    >
+      <Download size={14} aria-hidden />
+      Install
+    </button>
+  )
+}
+
 export function InstallMenuAction() {
-  const { canPromptInstall, showIosHelp, isStandalone, promptInstall } = useInstall()
+  const { canPromptInstall, isStandalone, promptInstall } = useInstall()
 
   if (isStandalone) return null
-  if (!canPromptInstall && !showIosHelp) return null
 
   return (
     <button

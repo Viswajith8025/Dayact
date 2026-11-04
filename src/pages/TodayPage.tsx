@@ -4,27 +4,42 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ActivitySheet } from '../components/ActivitySheet'
 import { Button } from '../components/Button'
+import { DayProgressBar, ProductivityDuelStrip } from '../components/DayProgress'
+import { JointStreakCard } from '../components/JointStreakCard'
+import { MoodPrompt } from '../components/MoodPrompt'
+import { PlanWeekSheet } from '../components/PlanWeekSheet'
+import { WeeklyRecapCard } from '../components/WeeklyRecapCard'
 import { DisplayNamePrompt } from '../components/DisplayNamePrompt'
+import { RescheduleReasonSheet } from '../components/RescheduleReasonSheet'
 import { SheetPortal } from '../components/SheetPortal'
+import { PROFILE_UPDATED_EVENT } from '../components/ProfileSheet'
 import { computeAnchoredMenuPosition } from '../lib/menuPosition'
 import { useAuth } from '../lib/auth'
 import {
   awardAchievements,
+  continueTomorrow,
   create,
+  formatPlannedTime,
   getMyProfile,
+  getTeammateProfile,
   listByDate,
   localDateString,
+  markInProgress,
   notifyActivitiesChanged,
   notifyAchievementsAwarded,
-  ownerInitial,
   parsePlannedDate,
+  partnerAvatarLabel,
+  productivityForDay,
   remove,
+  reschedulePlannedFor,
   setStatus,
   sortActivitiesForDay,
   update,
   userBadgeColor,
   type ActivityWithOwner,
 } from '../lib/activities'
+import { incrementChallengeProgress } from '../lib/challenges'
+import { upsertReaction, subscribeReactions, type ReactionEmoji } from '../lib/reactions'
 
 function ListSkeleton() {
   return (
@@ -52,6 +67,10 @@ type ActivityRowProps = {
   onUnskip: (activity: ActivityWithOwner) => void
   onEdit: (activity: ActivityWithOwner) => void
   onDelete: (activity: ActivityWithOwner) => void
+  onPartialDone: (activity: ActivityWithOwner) => void
+  onContinueTomorrow: (activity: ActivityWithOwner) => void
+  onReschedule: (activity: ActivityWithOwner) => void
+  onCheer: (activity: ActivityWithOwner, emoji: import('../lib/reactions').ReactionEmoji) => void
 }
 
 function ActivityRow({
@@ -64,14 +83,20 @@ function ActivityRow({
   onUnskip,
   onEdit,
   onDelete,
+  onPartialDone,
+  onContinueTomorrow,
+  onReschedule,
+  onCheer,
 }: ActivityRowProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
   const menuBtnRef = useRef<HTMLButtonElement>(null)
   const isDone = activity.status === 'done'
   const isSkipped = activity.status === 'skipped'
+  const isInProgress = activity.status === 'in_progress'
   const muted = isDone || isSkipped
   const hasOpenFollowUp = Boolean(activity.follow_up_on && !activity.follow_up_done)
+  const timeLabel = formatPlannedTime(activity.planned_time)
 
   useEffect(() => {
     if (!menuOpen) return
@@ -107,7 +132,12 @@ function ActivityRow({
             type="button"
             aria-label={isDone ? 'Mark as planned' : 'Mark as done'}
             onClick={() => onToggleDone(activity)}
-            className={`activity-check ${isDone ? 'activity-check--checked' : ''}`}
+            className={`activity-check ${isDone ? 'activity-check--checked' : ''}${isInProgress ? ' activity-check--partial' : ''}`}
+            style={
+              isInProgress
+                ? ({ '--progress-pct': activity.progress_pct || 50 } as CSSProperties)
+                : undefined
+            }
           >
             <span className="activity-check__circle" aria-hidden />
             <svg className="activity-check__mark" viewBox="0 0 12 10" aria-hidden>
@@ -120,7 +150,7 @@ function ActivityRow({
             style={{ backgroundColor: userBadgeColor(activity.user_id) }}
             aria-hidden
           >
-            {ownerInitial(activity.display_name)}
+            {partnerAvatarLabel(activity)}
           </div>
         )}
 
@@ -140,8 +170,24 @@ function ActivityRow({
           </div>
           <p className="typo-footnote text-[var(--color-text-muted)]">
             {activity.display_name.trim() || 'Teammate'}
-            {isSkipped ? ' · Skipped' : isDone ? ' · Done' : ''}
+            {timeLabel ? ` · ${timeLabel}` : ''}
+            {isSkipped ? ' · Skipped' : isDone ? ' · Done' : isInProgress ? ` · ${activity.progress_pct}%` : ''}
           </p>
+          {!isOwn && isDone ? (
+            <div className="flex flex-wrap gap-[var(--space-1)]" role="group" aria-label="Cheer">
+              {(['fist', 'fire', 'clap', 'heart'] as const).map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  className="btn btn--icon btn--tertiary text-base"
+                  aria-label={`Send ${key}`}
+                  onClick={() => onCheer(activity, key)}
+                >
+                  {key === 'fist' ? '👊' : key === 'fire' ? '🔥' : key === 'clap' ? '👏' : '❤️'}
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
 
         {isOwn ? (
@@ -191,6 +237,42 @@ function ActivityRow({
                     >
                       Skip
                     </button>
+                  ) : null}
+                  {activity.status === 'planned' || activity.status === 'in_progress' ? (
+                    <>
+                      {activity.status === 'planned' ? (
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => {
+                            setMenuOpen(false)
+                            onPartialDone(activity)
+                          }}
+                        >
+                          Partly done
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setMenuOpen(false)
+                          onContinueTomorrow(activity)
+                        }}
+                      >
+                        Continue tomorrow
+                      </button>
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setMenuOpen(false)
+                          onReschedule(activity)
+                        }}
+                      >
+                        Reschedule
+                      </button>
+                    </>
                   ) : null}
                   {activity.status === 'skipped' ? (
                     <button
@@ -245,10 +327,19 @@ export function TodayPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [displayName, setDisplayName] = useState<string | null>(null)
+  const [avatarEmoji, setAvatarEmoji] = useState<string | null>(null)
+  const [teammate, setTeammate] = useState<{
+    id: string
+    display_name: string
+    avatar_emoji: string | null
+  } | null>(null)
   const [profileLoading, setProfileLoading] = useState(true)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editing, setEditing] = useState<ActivityWithOwner | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<ActivityWithOwner | null>(null)
+  const [rescheduleTarget, setRescheduleTarget] = useState<ActivityWithOwner | null>(null)
+  const [moodTarget, setMoodTarget] = useState<ActivityWithOwner | null>(null)
+  const [planWeekOpen, setPlanWeekOpen] = useState(false)
   const [exitingId, setExitingId] = useState<string | null>(null)
   const toggleInFlight = useRef(new Set<string>())
 
@@ -308,6 +399,11 @@ export function TodayPage() {
         return
       }
       setDisplayName(result.data?.display_name ?? '')
+      setAvatarEmoji(result.data?.avatar_emoji ?? null)
+    })
+    void getTeammateProfile(user.id).then((result) => {
+      if (!active || result.error) return
+      setTeammate(result.data)
     })
     return () => {
       active = false
@@ -315,7 +411,28 @@ export function TodayPage() {
   }, [user])
 
   useEffect(() => {
+    if (!user) return
+    const onProfile = () => {
+      void getMyProfile(user.id).then((result) => {
+        if (result.data) {
+          setDisplayName(result.data.display_name)
+          setAvatarEmoji(result.data.avatar_emoji)
+        }
+      })
+      void getTeammateProfile(user.id).then((result) => {
+        if (!result.error) setTeammate(result.data)
+      })
+    }
+    window.addEventListener(PROFILE_UPDATED_EVENT, onProfile)
+    return () => window.removeEventListener(PROFILE_UPDATED_EVENT, onProfile)
+  }, [user])
+
+  useEffect(() => {
     void loadActivities()
+  }, [loadActivities])
+
+  useEffect(() => {
+    return subscribeReactions(() => void loadActivities())
   }, [loadActivities])
 
   useEffect(() => {
@@ -363,9 +480,15 @@ export function TodayPage() {
     setActivities((prev) => prev.map((row) => (row.id === updated.id ? updated : row)))
     notifyActivitiesChanged()
     if (nextDone) {
+      void incrementChallengeProgress(user.id).then(async (completed) => {
+        if (!completed) return
+        const { default: confetti } = await import('canvas-confetti')
+        confetti({ particleCount: 80, spread: 70, origin: { y: 0.7 } })
+      })
       void awardAchievements().then((award) => {
         if (award.data?.length) notifyAchievementsAwarded(award.data)
       })
+      setMoodTarget(updated)
     }
   }
 
@@ -416,11 +539,33 @@ export function TodayPage() {
     setDeleteTarget(activity)
   }
 
+  async function handlePartialDone(activity: ActivityWithOwner) {
+    const result = await markInProgress(activity.id, 50)
+    if (result.error) {
+      setError(result.error)
+      return
+    }
+    const updated = result.data!
+    setActivities((prev) => prev.map((row) => (row.id === updated.id ? updated : row)))
+    notifyActivitiesChanged()
+  }
+
+  async function handleContinueTomorrow(activity: ActivityWithOwner) {
+    const result = await continueTomorrow(activity)
+    if (result.error) {
+      setError(result.error)
+      return
+    }
+    void loadActivities()
+    notifyActivitiesChanged()
+  }
+
   async function handleSave(payload: {
     title: string
     notes: string | null
     planned_for: string
     follow_up_on: string | null
+    planned_time: string | null
   }) {
     if (!user) return 'Not signed in'
 
@@ -465,6 +610,24 @@ export function TodayPage() {
       ? 'Nothing planned. Add something for today.'
       : 'Nothing planned for this day.'
 
+  const youProfile = {
+    display_name: displayName ?? '',
+    avatar_emoji: avatarEmoji,
+  }
+  const teammateProfile = {
+    display_name: teammate?.display_name ?? '',
+    avatar_emoji: teammate?.avatar_emoji ?? null,
+  }
+  const youPct = user ? productivityForDay(activities, user.id) : null
+  const teammatePct = teammate ? productivityForDay(activities, teammate.id) : null
+  const showRecap = searchParams.get('recap') === '1' || new Date().getDay() === 0
+
+  async function handleCheer(activity: ActivityWithOwner, emoji: ReactionEmoji) {
+    if (!user) return
+    const result = await upsertReaction(user.id, activity.id, emoji)
+    if (result.error) setError(result.error)
+  }
+
   return (
     <section className="space-y-[var(--space-section)]">
       {showDisplayNamePrompt ? (
@@ -485,6 +648,13 @@ export function TodayPage() {
             <p className="typo-subhead text-[var(--color-text-muted)]">{headingDate}</p>
             <div ref={titleSentinelRef} className="h-px w-full" aria-hidden />
           </div>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => setPlanWeekOpen(true)}
+          >
+            Plan my week
+          </Button>
           <Button
             type="button"
             onClick={() => {
@@ -534,6 +704,33 @@ export function TodayPage() {
             aria-label="Jump to date"
           />
         </div>
+
+        {user ? (
+          <div className="space-y-[var(--space-3)]">
+            <JointStreakCard />
+            {showRecap ? <WeeklyRecapCard forceShow={searchParams.get('recap') === '1'} /> : null}
+            <DayProgressBar
+              label="You"
+              activity={youProfile}
+              userId={user.id}
+              items={activities}
+              highlight
+            />
+            {teammate ? (
+              <DayProgressBar
+                label={teammate.display_name.trim() || 'Teammate'}
+                activity={teammateProfile}
+                userId={teammate.id}
+                items={activities}
+              />
+            ) : null}
+            <ProductivityDuelStrip
+              youPct={youPct}
+              teammatePct={teammatePct}
+              teammateName={teammate?.display_name ?? 'Teammate'}
+            />
+          </div>
+        ) : null}
       </header>
 
       {error ? (
@@ -570,6 +767,10 @@ export function TodayPage() {
                 setSheetOpen(true)
               }}
               onDelete={handleDelete}
+              onPartialDone={handlePartialDone}
+              onContinueTomorrow={handleContinueTomorrow}
+              onReschedule={setRescheduleTarget}
+              onCheer={handleCheer}
             />
           ))}
         </ul>
@@ -585,6 +786,38 @@ export function TodayPage() {
           setEditing(null)
         }}
         onSave={handleSave}
+      />
+
+      <PlanWeekSheet open={planWeekOpen} onClose={() => setPlanWeekOpen(false)} />
+
+      <MoodPrompt
+        activity={moodTarget}
+        onClose={() => setMoodTarget(null)}
+        onSaved={(updated) => {
+          setActivities((prev) => prev.map((row) => (row.id === updated.id ? updated : row)))
+        }}
+      />
+
+      <RescheduleReasonSheet
+        open={Boolean(rescheduleTarget)}
+        title="Reschedule activity"
+        dateLabel="New date"
+        initialDate={rescheduleTarget?.planned_for ?? selectedDate}
+        onClose={() => setRescheduleTarget(null)}
+        onConfirm={async (date, reason) => {
+          if (!rescheduleTarget) return 'Nothing to reschedule'
+          const result = await reschedulePlannedFor(rescheduleTarget.id, date, reason)
+          if (result.error) return result.error
+          const updated = result.data!
+          setRescheduleTarget(null)
+          if (updated.planned_for === selectedDate) {
+            setActivities((prev) => prev.map((row) => (row.id === updated.id ? updated : row)))
+          } else {
+            setActivities((prev) => prev.filter((row) => row.id !== updated.id))
+          }
+          notifyActivitiesChanged()
+          return null
+        }}
       />
 
       {deleteTarget ? (

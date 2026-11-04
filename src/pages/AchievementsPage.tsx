@@ -4,11 +4,17 @@ import { useAuth } from '../lib/auth'
 import {
   ACHIEVEMENT_DONE_TARGETS,
   COUNT_BASED_ACHIEVEMENTS,
+  computeWeeklyScore,
   countDoneActivities,
   getTeammateProfile,
   listAchievementCatalog,
+  listActivitiesInRange,
+  listOpenFollowups,
   listUserAchievements,
+  listMoodInsights,
+  weekRangeLocal,
   type AchievementDefinition,
+  type ActivityWithOwner,
 } from '../lib/activities'
 
 type ViewMode = 'you' | 'friend'
@@ -33,10 +39,13 @@ export function AchievementsPage() {
   const [catalog, setCatalog] = useState<AchievementDefinition[]>([])
   const [earned, setEarned] = useState<Map<string, string>>(new Map())
   const [doneCount, setDoneCount] = useState(0)
-  const [friend, setFriend] = useState<{ id: string; display_name: string } | null>(null)
+  const [friend, setFriend] = useState<{ id: string; display_name: string; avatar_emoji: string | null } | null>(null)
+  const [weekActivities, setWeekActivities] = useState<ActivityWithOwner[]>([])
+  const [weekFollowups, setWeekFollowups] = useState<ActivityWithOwner[]>([])
   const [view, setView] = useState<ViewMode>('you')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [moodInsights, setMoodInsights] = useState<{ title: string; avg: number; count: number }[]>([])
 
   const subjectId = view === 'you' ? user?.id : friend?.id
 
@@ -121,6 +130,46 @@ export function AchievementsPage() {
     }
   }, [subjectId])
 
+  useEffect(() => {
+    if (!user) return
+    let active = true
+    const { from, to } = weekRangeLocal()
+    void Promise.all([listActivitiesInRange(from, to), listOpenFollowups()]).then(
+      ([activitiesResult, followResult]) => {
+        if (!active) return
+        if (!activitiesResult.error) setWeekActivities(activitiesResult.data ?? [])
+        if (!followResult.error) setWeekFollowups(followResult.data ?? [])
+      },
+    )
+    return () => {
+      active = false
+    }
+  }, [user])
+
+  useEffect(() => {
+    if (!user || view !== 'you') return
+    let active = true
+    void listMoodInsights(user.id).then((result) => {
+      if (!active) return
+      setMoodInsights(result.data ?? [])
+    })
+    return () => {
+      active = false
+    }
+  }, [user, view])
+
+  const weekEnd = weekRangeLocal().to
+  const weekStart = weekRangeLocal().from
+  const yourWeekScore = useMemo(() => {
+    if (!user || !weekActivities) return null
+    return computeWeeklyScore(weekActivities, weekFollowups ?? [], user.id, weekStart, weekEnd)
+  }, [user, weekActivities, weekFollowups, weekStart, weekEnd])
+
+  const friendWeekScore = useMemo(() => {
+    if (!friend || !weekActivities) return null
+    return computeWeeklyScore(weekActivities, weekFollowups ?? [], friend.id, weekStart, weekEnd)
+  }, [friend, weekActivities, weekFollowups, weekStart, weekEnd])
+
   const friendLabel = useMemo(() => {
     const name = friend?.display_name.trim()
     return name || 'Teammate'
@@ -174,6 +223,46 @@ export function AchievementsPage() {
           </button>
         </div>
       </header>
+
+      {user && yourWeekScore ? (
+        <div className="week-duel-card space-y-[var(--space-2)]">
+          <h2 className="typo-headline text-[var(--color-text)]">This week</h2>
+          <p className="typo-subhead text-[var(--color-text-muted)]">
+            Honor-system points · done +10, perfect day +25, follow-up +5, overdue −5
+          </p>
+          <div className="flex flex-wrap items-baseline justify-between gap-[var(--space-3)]">
+            <p className="typo-title tabular-nums text-[var(--color-text)]">
+              {(yourWeekScore.total > (friendWeekScore?.total ?? -1) ? '👑 ' : '') +
+                `You ${yourWeekScore.total}`}
+            </p>
+            {friend && friendWeekScore ? (
+              <p className="typo-title tabular-nums text-[var(--color-text-muted)]">
+                {(friendWeekScore.total > yourWeekScore.total ? '👑 ' : '') +
+                  `${friendLabel} ${friendWeekScore.total}`}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {view === 'you' && moodInsights.length > 0 ? (
+        <div className="week-duel-card space-y-[var(--space-2)]">
+          <h2 className="typo-headline text-[var(--color-text)]">Mood insights</h2>
+          <p className="typo-subhead text-[var(--color-text-muted)]">
+            Top activities by average mood (min 2 check-ins)
+          </p>
+          <ul className="space-y-[var(--space-2)]">
+            {moodInsights.slice(0, 5).map((row) => (
+              <li key={row.title} className="flex justify-between gap-[var(--space-3)] typo-subhead">
+                <span className="truncate text-[var(--color-text)]">{row.title}</span>
+                <span className="shrink-0 tabular-nums text-[var(--color-text-muted)]">
+                  {row.avg.toFixed(1)} · {row.count}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       {error ? (
         <p className="typo-subhead text-[var(--color-danger)]">

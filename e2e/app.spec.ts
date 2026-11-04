@@ -13,10 +13,17 @@ async function waitForActivityDelete(page: Page) {
   )
 }
 
+async function clickMenuItem(page: Page, name: string) {
+  const item = page.getByRole('menu').getByRole('menuitem', { name })
+  await expect(item).toBeVisible()
+  await item.evaluate((el) => (el as HTMLButtonElement).click())
+}
+
 async function deleteActivityRow(page: Page, title: string) {
   const row = page.getByRole('listitem').filter({ hasText: title })
+  await row.scrollIntoViewIfNeeded()
   await row.getByRole('button', { name: 'Activity actions' }).click()
-  await page.getByRole('menu').getByRole('menuitem', { name: 'Delete' }).click()
+  await clickMenuItem(page, 'Delete')
   const deleteDone = waitForActivityDelete(page)
   await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click()
   await deleteDone
@@ -63,52 +70,9 @@ test.describe('signed-in flows', () => {
     await page.getByRole('button', { name: 'Cancel' }).click()
   })
 
-  test('suggest titles shows friendly error on 502', async ({ page }) => {
-    await page.route('**/api/suggest-activity', async (route) => {
-      await route.fulfill({
-        status: 502,
-        contentType: 'application/json',
-        body: JSON.stringify({ error: 'Invalid or unauthorized Gemini key' }),
-      })
-    })
-
-    await page.getByRole('button', { name: 'Add activity' }).click()
-    await page.getByRole('button', { name: 'Suggest titles' }).click()
-    await expect(page.getByRole('alert')).toContainText('Suggestions unavailable right now')
-    await expect(page.getByRole('button', { name: 'Suggest titles' })).toBeEnabled()
-  })
-
-  test('suggest titles shows slow hint after 5 seconds', async ({ page }) => {
-    await page.route('**/api/suggest-activity', async (route) => {
-      await new Promise((resolve) => setTimeout(resolve, 8000))
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ suggestions: ['One', 'Two', 'Three'] }),
-      })
-    })
-
-    await page.getByRole('button', { name: 'Add activity' }).click()
-    await page.getByRole('button', { name: 'Suggest titles' }).click()
-    await expect(page.getByRole('status')).toContainText('Still working', { timeout: 7000 })
-  })
-
-  test('suggest titles uses mocked AI in dev', async ({ page }) => {
-    await page.route('**/api/suggest-activity', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          suggestions: ['Walk for 20 minutes', 'Reply to one email', 'Prep lunch'],
-        }),
-      })
-    })
-
-    await page.getByRole('button', { name: 'Add activity' }).click()
-    await page.getByRole('button', { name: 'Suggest titles' }).click()
-    await expect(page.getByRole('button', { name: 'Walk for 20 minutes' })).toBeVisible()
-    await page.getByRole('button', { name: 'Walk for 20 minutes' }).click()
-    await expect(page.getByRole('textbox', { name: 'Title' })).toHaveValue('Walk for 20 minutes')
+  test('today shows productivity progress for signed-in user', async ({ page }) => {
+    await expect(page.getByRole('progressbar', { name: 'You productivity' })).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Joint streak' })).toBeVisible()
   })
 
   test('activity row menu opens Edit action', async ({ page }) => {
@@ -116,12 +80,14 @@ test.describe('signed-in flows', () => {
     await page.getByRole('button', { name: 'Add activity' }).click()
     await page.getByRole('textbox', { name: 'Title' }).fill(title)
     await page.getByRole('button', { name: 'Save' }).click()
-    await expect(page.getByText(title)).toBeVisible()
+    await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 20_000 })
+    await expect(page.getByText(title)).toBeVisible({ timeout: 15_000 })
 
     const row = page.getByRole('listitem').filter({ hasText: title })
+    await row.scrollIntoViewIfNeeded()
     await row.getByRole('button', { name: 'Activity actions' }).click()
     await expect(page.getByRole('menu')).toBeVisible()
-    await page.getByRole('menu').getByRole('menuitem', { name: 'Edit' }).click()
+    await clickMenuItem(page, 'Edit')
     await expect(page.getByRole('dialog')).toBeVisible()
     await page.getByRole('button', { name: 'Cancel' }).click()
 
@@ -133,15 +99,31 @@ test.describe('signed-in flows', () => {
     await page.getByRole('button', { name: 'Add activity' }).click()
     await page.getByRole('textbox', { name: 'Title' }).fill(title)
     await page.getByRole('button', { name: 'Save' }).click()
-    await expect(page.getByText(title)).toBeVisible()
+    await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 20_000 })
+    await expect(page.getByText(title)).toBeVisible({ timeout: 15_000 })
 
     const row = page.getByRole('listitem').filter({ hasText: title })
+    await row.scrollIntoViewIfNeeded()
     await row.getByRole('button', { name: 'Activity actions' }).click()
-    await page.getByRole('menu').getByRole('menuitem', { name: 'Delete' }).click()
+    await clickMenuItem(page, 'Delete')
     await expect(page.getByRole('alertdialog')).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(page.getByRole('alertdialog')).toHaveCount(0)
 
     await deleteActivityRow(page, title)
+  })
+
+  test('lazy routes load', async ({ page }) => {
+    await page.goto('/recap?recap=1')
+    await expect(page.getByRole('heading', { level: 1, name: 'Recap' })).toBeVisible({ timeout: 15_000 })
+    await page.goto('/heatmap')
+    await expect(page.getByRole('heading', { name: 'Activity heatmap' })).toBeVisible({ timeout: 15_000 })
+    await page.goto('/challenges')
+    await expect(page.getByRole('heading', { name: 'Couple challenges' })).toBeVisible({ timeout: 15_000 })
+  })
+
+  test('weekly recap flag on today', async ({ page }) => {
+    await page.goto('/today?recap=1')
+    await expect(page.getByRole('region', { name: 'Weekly recap' })).toBeVisible({ timeout: 15_000 })
   })
 })

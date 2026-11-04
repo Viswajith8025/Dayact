@@ -14,7 +14,7 @@ Dayact is a installable PWA for two people who share one activity list: plan and
 
    - `VITE_SUPABASE_URL` — your Supabase project URL
    - `VITE_SUPABASE_ANON_KEY` — the project **anon / publishable** key (never the service role key)
-   - `GEMINI_API_KEY` — optional for **local dev** AI suggestions from [Google AI Studio](https://aistudio.google.com/apikey); restart `npm run dev` after adding. Do **not** prefix with `VITE_`.
+   - `VITE_VAPID_PUBLIC_KEY` — optional; Web Push follow-up reminders (see checklist)
 
 3. Run the dev server:
 
@@ -48,16 +48,6 @@ Connect the GitHub repo (or run `netlify deploy --prod` with the CLI). After dep
 3. **Authentication → Users:** create exactly the two real accounts your team will use (email + password). There is no self-service registration in the app.
 
 Optional: run `supabase/migrations/*.sql` on your project if you are not already on the remote schema from development.
-
-## AI title suggestions (Gemini)
-
-The **Suggest titles** button uses [Google Gemini](https://ai.google.dev/). The API key never goes in the frontend or Netlify env.
-
-**Local dev:** add `GEMINI_API_KEY=...` to `.env` and **restart** `npm run dev` (Vite only reads `.env` at startup).
-
-**Production:** Supabase Dashboard → **Edge Functions → Secrets** → add `GEMINI_API_KEY` (same name). Redeploy `suggest-activity` if you change the function code.
-
-Use a key from **Google AI Studio** (`AIza…` or `AQ.…`). If you see auth errors, create a new key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey).
 
 ## Automated tests (Playwright)
 

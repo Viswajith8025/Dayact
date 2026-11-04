@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Button } from './Button'
 import { Input } from './Input'
 import { SheetPortal } from './SheetPortal'
@@ -18,6 +18,7 @@ type ActivitySheetProps = {
     notes: string | null
     planned_for: string
     follow_up_on: string | null
+    planned_time: string | null
   }) => Promise<string | null>
 }
 
@@ -33,13 +34,14 @@ export function ActivitySheet({
   const [notes, setNotes] = useState('')
   const [plannedFor, setPlannedFor] = useState(defaultPlannedFor)
   const [followUpOn, setFollowUpOn] = useState('')
+  const [plannedTime, setPlannedTime] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false)
   const [suggesting, setSuggesting] = useState(false)
+  const [suggestSlow, setSuggestSlow] = useState(false)
   const [suggestError, setSuggestError] = useState<string | null>(null)
   const [suggestions, setSuggestions] = useState<string[]>([])
-  const [suggestSlow, setSuggestSlow] = useState(false)
-  const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -47,23 +49,11 @@ export function ActivitySheet({
     setNotes(initial?.notes ?? '')
     setPlannedFor(initial?.planned_for ?? defaultPlannedFor)
     setFollowUpOn(initial?.follow_up_on ?? '')
+    setPlannedTime(initial?.planned_time?.slice(0, 5) ?? '')
     setError(null)
     setSaving(false)
-    setSuggesting(false)
-    setSuggestError(null)
-    setSuggestions([])
-    setSuggestSlow(false)
     setDiscardConfirmOpen(false)
   }, [open, initial, defaultPlannedFor])
-
-  useEffect(() => {
-    if (!suggesting) {
-      setSuggestSlow(false)
-      return
-    }
-    const timer = window.setTimeout(() => setSuggestSlow(true), 5000)
-    return () => window.clearTimeout(timer)
-  }, [suggesting])
 
   useEffect(() => {
     if (!open) return
@@ -78,7 +68,7 @@ export function ActivitySheet({
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [open, discardConfirmOpen, title, notes, plannedFor, followUpOn, initial, defaultPlannedFor, onClose])
+  }, [open, discardConfirmOpen, title, notes, plannedFor, followUpOn, plannedTime, initial, defaultPlannedFor, onClose])
 
   if (!open) return null
 
@@ -87,11 +77,13 @@ export function ActivitySheet({
     const baseNotes = (initial?.notes ?? '').trim()
     const basePlanned = initial?.planned_for ?? defaultPlannedFor
     const baseFollow = initial?.follow_up_on ?? ''
+    const baseTime = initial?.planned_time?.slice(0, 5) ?? ''
     return (
       title.trim() !== baseTitle ||
       notes.trim() !== baseNotes ||
       plannedFor !== basePlanned ||
-      followUpOn !== baseFollow
+      followUpOn !== baseFollow ||
+      plannedTime !== baseTime
     )
   }
 
@@ -133,6 +125,7 @@ export function ActivitySheet({
       notes: trimmedNotes ? trimmedNotes : null,
       planned_for: plannedFor,
       follow_up_on: followUpOn ? followUpOn : null,
+      planned_time: plannedTime ? `${plannedTime}:00` : null,
     })
     setSaving(false)
 
@@ -147,10 +140,14 @@ export function ActivitySheet({
   async function handleSuggest() {
     if (suggesting || saving) return
     setSuggesting(true)
+    setSuggestSlow(false)
     setSuggestError(null)
+    const timer = window.setTimeout(() => setSuggestSlow(true), 5000)
     const hint = [title.trim(), notes.trim()].filter(Boolean).join('. ')
     const result = await suggestActivityTitles(hint)
+    window.clearTimeout(timer)
     setSuggesting(false)
+    setSuggestSlow(false)
     if (result.error) {
       setSuggestError(result.error)
       setSuggestions([])
@@ -211,21 +208,16 @@ export function ActivitySheet({
               {suggestError}
             </p>
           ) : null}
-          {suggestions.length > 0 ? (
-            <ul className="motion-stagger flex flex-col gap-[var(--space-2)]" aria-label="AI suggestions">
-              {suggestions.map((suggestion, index) => (
-                <li key={suggestion} style={{ '--stagger-index': index } as CSSProperties}>
-                  <button
-                    type="button"
-                    className="btn btn--secondary w-full justify-start text-left"
-                    onClick={() => setTitle(suggestion)}
-                  >
-                    {suggestion}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : null}
+          {suggestions.map((suggestion) => (
+            <button
+              key={suggestion}
+              type="button"
+              className="btn btn--secondary w-full justify-start text-left"
+              onClick={() => setTitle(suggestion)}
+            >
+              {suggestion}
+            </button>
+          ))}
         </div>
 
         <label className="flex flex-col gap-[var(--space-2)] typo-footnote text-[var(--color-text-muted)]">
@@ -247,6 +239,14 @@ export function ActivitySheet({
           required
           value={plannedFor}
           onChange={(e) => setPlannedFor(e.target.value)}
+        />
+
+        <Input
+          label="Time (optional)"
+          name="planned_time"
+          type="time"
+          value={plannedTime}
+          onChange={(e) => setPlannedTime(e.target.value)}
         />
 
         <Input

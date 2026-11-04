@@ -4,7 +4,8 @@ import { CalendarDays, ListChecks, LogOut, Menu, Trophy, X } from 'lucide-react'
 import { AchievementCelebrations } from './AchievementCelebrations'
 import { ConnectionGate } from './ConnectionGate'
 import { DayactBrand } from './DayactBrand'
-import { InstallMenuAction, InstallPromptBar } from './InstallPrompt'
+import { InstallHeaderPill, InstallMenuAction, InstallPromptBar } from './InstallPrompt'
+import { ProfileSheet } from './ProfileSheet'
 import { ThemeToggle } from './ThemeToggle'
 import { useAuth } from '../lib/auth'
 import {
@@ -83,7 +84,13 @@ function AppNav({
   )
 }
 
-function SessionFooter({ layout }: { layout: 'sidebar' | 'header-menu' }) {
+function SessionFooter({
+  layout,
+  onOpenProfile,
+}: {
+  layout: 'sidebar' | 'header-menu'
+  onOpenProfile: () => void
+}) {
   const navigate = useNavigate()
   const [signingOut, setSigningOut] = useState(false)
 
@@ -101,6 +108,18 @@ function SessionFooter({ layout }: { layout: 'sidebar' | 'header-menu' }) {
   if (layout === 'sidebar') {
     return (
       <div className="mt-auto space-y-[var(--space-4)] border-t border-[var(--color-separator)] pt-[var(--space-4)]">
+        <button type="button" className="btn btn--tertiary w-full justify-start" onClick={onOpenProfile}>
+          Profile
+        </button>
+        <NavLink to="/challenges" className="btn btn--tertiary w-full justify-start">
+          Challenges
+        </NavLink>
+        <NavLink to="/heatmap" className="btn btn--tertiary w-full justify-start">
+          Heatmap
+        </NavLink>
+        <NavLink to="/recap?recap=1" className="btn btn--tertiary w-full justify-start">
+          Weekly recap
+        </NavLink>
         <ThemeToggle />
         <InstallMenuAction />
         <div className="flex items-center justify-between gap-[var(--space-2)]">
@@ -121,6 +140,18 @@ function SessionFooter({ layout }: { layout: 'sidebar' | 'header-menu' }) {
 
   return (
     <div className="flex w-56 flex-col gap-[var(--space-3)] p-[var(--space-3)]">
+      <button type="button" className="btn btn--tertiary w-full justify-start" onClick={onOpenProfile}>
+        Profile
+      </button>
+      <NavLink to="/challenges" className="btn btn--tertiary w-full justify-start">
+        Challenges
+      </NavLink>
+      <NavLink to="/heatmap" className="btn btn--tertiary w-full justify-start">
+        Heatmap
+      </NavLink>
+      <NavLink to="/recap?recap=1" className="btn btn--tertiary w-full justify-start">
+        Weekly recap
+      </NavLink>
       <ThemeToggle />
       <InstallMenuAction />
       <span className="typo-footnote text-[var(--color-text-muted)] tabular-nums">{APP_VERSION}</span>
@@ -144,7 +175,13 @@ export function AppShell() {
   const [badgePop, setBadgePop] = useState(false)
   const prevBadgeRef = useRef(0)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [profileOpen, setProfileOpen] = useState(false)
   const [compactTitle, setCompactTitle] = useState(false)
+
+  const openProfile = useCallback(() => {
+    setMobileMenuOpen(false)
+    setProfileOpen(true)
+  }, [])
 
   const pageTitle = routeTitles[location.pathname] ?? 'Dayact'
 
@@ -197,10 +234,11 @@ export function AppShell() {
         <nav className="flex flex-col gap-[var(--space-1)]" aria-label="Main">
           <AppNav layout="sidebar" followUpBadge={followUpBadge} badgePop={badgePop} />
         </nav>
-        <SessionFooter layout="sidebar" />
+        <SessionFooter layout="sidebar" onOpenProfile={openProfile} />
       </aside>
 
       <div className="flex min-h-dvh flex-1 flex-col">
+        <ProfileSheet open={profileOpen} onClose={() => setProfileOpen(false)} />
         <header className="glass-bar sticky top-0 z-20 flex items-center justify-between px-[var(--space-page)] py-[var(--space-2)] pt-[max(var(--space-2),env(safe-area-inset-top))] md:hidden">
           {compactTitle ? (
             <>
@@ -228,7 +266,7 @@ export function AppShell() {
                       onClick={() => setMobileMenuOpen(false)}
                     />
                     <div className="menu-popover menu-popover--motion absolute left-0 top-full z-20 mt-[var(--space-2)] w-56">
-                      <SessionFooter layout="header-menu" />
+                      <SessionFooter layout="header-menu" onOpenProfile={openProfile} />
                     </div>
                   </>
                 ) : null}
@@ -236,12 +274,14 @@ export function AppShell() {
               <p className="typo-headline absolute left-1/2 -translate-x-1/2 text-[var(--color-text)]">
                 {pageTitle}
               </p>
-              <div className="w-[var(--touch-min)]" aria-hidden />
+              <InstallHeaderPill />
             </>
           ) : (
             <>
               <DayactBrand />
-              <div className={mobileMenuOpen ? 'relative z-30' : 'relative'}>
+              <div className="flex items-center gap-[var(--space-2)]">
+                <InstallHeaderPill />
+                <div className={mobileMenuOpen ? 'relative z-30' : 'relative'}>
                 <button
                   type="button"
                   className="btn btn--icon btn--tertiary relative z-30"
@@ -265,10 +305,11 @@ export function AppShell() {
                       onClick={() => setMobileMenuOpen(false)}
                     />
                     <div className="menu-popover menu-popover--motion absolute right-0 top-full z-20 mt-[var(--space-2)] w-56">
-                      <SessionFooter layout="header-menu" />
+                      <SessionFooter layout="header-menu" onOpenProfile={openProfile} />
                     </div>
                   </>
                 ) : null}
+                </div>
               </div>
             </>
           )}

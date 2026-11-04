@@ -18,10 +18,12 @@ jobs:
       - run: npx playwright install chromium
       - run: npm run build
         env:
-          VITE_SUPABASE_URL: https://placeholder.supabase.co
-          VITE_SUPABASE_ANON_KEY: placeholder-key-for-ci-build
-      - run: npm run test:e2e
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+      - run: npm run test:e2e -- --workers=1
         env:
           CI: true
-          VITE_SUPABASE_URL: https://placeholder.supabase.co
-          VITE_SUPABASE_ANON_KEY: placeholder-key-for-ci-build
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          DAYACT_TEST_EMAIL: ${{ secrets.DAYACT_TEST_EMAIL }}
+          DAYACT_TEST_PASSWORD: ${{ secrets.DAYACT_TEST_PASSWORD }}

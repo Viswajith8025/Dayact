@@ -920,6 +920,125 @@ button,
   opacity: 1;
 }
 
+.joint-streak-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border-radius: var(--radius-group);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-accent) 12%, var(--color-surface-elevated)),
+    var(--color-surface-elevated)
+  );
+  border: 1px solid color-mix(in srgb, var(--color-accent) 25%, var(--color-separator));
+}
+
+.joint-streak-card__flame {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+}
+
+.joint-streak-card__flame-icon {
+  font-size: 1.75rem;
+  animation: flame-flicker 1.8s ease-in-out infinite;
+}
+
+@keyframes flame-flicker {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 0.85;
+  }
+}
+
+.day-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-group);
+  background: var(--color-surface-elevated);
+  border: 1px solid var(--color-separator);
+}
+
+.day-progress--you {
+  border-color: color-mix(in srgb, var(--color-accent) 35%, var(--color-separator));
+}
+
+.day-progress__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.partner-avatar--sm {
+  width: 1.75rem;
+  height: 1.75rem;
+  font-size: 0.95rem;
+}
+
+.day-progress__track {
+  height: 0.5rem;
+  border-radius: var(--radius-control);
+  background: var(--color-accent-tint);
+  overflow: hidden;
+}
+
+.day-progress__fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 70%, white));
+  transition: width var(--duration-state) var(--ease-motion);
+}
+
+.activity-check--partial .activity-check__circle {
+  background: conic-gradient(
+    var(--color-accent) calc(var(--progress-pct, 50) * 1%),
+    var(--color-separator) 0
+  );
+}
+
+.week-duel-card {
+  padding: var(--space-4);
+  border-radius: var(--radius-group);
+  background: var(--color-surface-elevated);
+  border: 1px solid var(--color-separator);
+}
+
+.install-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  border-radius: 999px;
+  background: var(--color-accent-tint);
+  color: var(--color-accent);
+  font-size: var(--text-caption);
+  font-weight: 600;
+}
+
+.heatmap-grid {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.heatmap-cell {
+  aspect-ratio: 1;
+  border-radius: var(--radius-control);
+  border: none;
+  cursor: pointer;
+}
+
 .suggest-shimmer {
   height: 0.375rem;
   border-radius: var(--radius-control);
@@ -953,6 +1072,14 @@ button,
   .tab-nav-link--active::after {
     transform: translateX(-50%) scaleX(1);
     opacity: 1;
+  }
+
+  .joint-streak-card__flame-icon {
+    animation: none;
+  }
+
+  .day-progress__fill {
+    transition: none;
   }
 
   .suggest-shimmer {
