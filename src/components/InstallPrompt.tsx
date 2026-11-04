@@ -2,21 +2,26 @@ import { Download, Share, X } from 'lucide-react'
 import { Button } from './Button'
 import { useInstall, useInstallOfferVisible } from '../lib/install'
 
-export function InstallPromptBar({ anchor = 'tabs' }: { anchor?: 'tabs' | 'screen' }) {
+export function InstallPromptBar({ anchor = 'tabs' }: { anchor?: 'tabs' | 'screen' | 'top' }) {
   const visible = useInstallOfferVisible()
   const { canPromptInstall, showIosHelp, promptInstall, dismissInstallOffer } = useInstall()
 
   if (!visible) return null
 
-  const bottom =
-    anchor === 'tabs'
-      ? 'calc(var(--nav-height) + env(safe-area-inset-bottom) + var(--space-6) + var(--space-2))'
-      : 'max(env(safe-area-inset-bottom), var(--space-4))'
+  const positionStyle =
+    anchor === 'top'
+      ? { top: 'calc(env(safe-area-inset-top) + var(--space-2))' as const }
+      : {
+          bottom:
+            anchor === 'tabs'
+              ? 'calc(var(--nav-height) + env(safe-area-inset-bottom) + var(--space-6) + var(--space-2))'
+              : 'max(env(safe-area-inset-bottom), var(--space-4))',
+        }
 
   return (
     <div
       className={`install-prompt fixed inset-x-[var(--space-page)] z-[25]${anchor === 'tabs' ? ' md:hidden' : ''}`}
-      style={{ bottom }}
+      style={positionStyle}
       role="region"
       aria-label="Install Dayact"
     >

@@ -35,14 +35,17 @@ Deno.serve(async (req) => {
   }
 
   const cronSecret = Deno.env.get("CRON_SECRET")?.trim()
-  if (cronSecret) {
-    const header = req.headers.get("x-cron-secret")
-    if (header !== cronSecret) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      })
-    }
+  if (!cronSecret) {
+    return new Response(JSON.stringify({ error: "CRON_SECRET not configured" }), {
+      status: 503,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    })
+  }
+  if (req.headers.get("x-cron-secret") !== cronSecret) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    })
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")

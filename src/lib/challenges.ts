@@ -104,3 +104,39 @@ export async function incrementChallengeProgress(userId: string): Promise<boolea
   }
   return completedAny
 }
+
+export async function cancelChallenge(challengeId: string): Promise<{ error: string | null }> {
+  const { error } = await supabase
+    .from('challenges')
+    .update({ status: 'cancelled' })
+    .eq('id', challengeId)
+  return { error: error?.message ?? null }
+}
+
+export async function deleteChallenge(challengeId: string): Promise<{ error: string | null }> {
+  const { error } = await supabase.from('challenges').delete().eq('id', challengeId)
+  return { error: error?.message ?? null }
+}
+
+/** When a done activity is removed, undo one progress tick for active challenges. */
+export async function decrementChallengeProgressForDone(userId: string): Promise<void> {
+  const today = localDateString()
+  const { data: challenges } = await supabase
+    .from('challenges')
+    .select('id,duration_days,start_date,status')
+    .eq('status', 'active')
+  for (const c of challenges ?? []) {
+    const end = format(addDays(new Date(c.start_date), c.duration_days - 1), 'yyyy-MM-dd')
+    if (today < c.start_date || today > end) continue
+    const { data: row } = await supabase
+      .from('challenge_progress')
+      .select('done_count')
+      .eq('challenge_id', c.id)
+      .eq('user_id', userId)
+      .maybeSingle()
+    const next = Math.max(0, (row?.done_count ?? 0) - 1)
+    await supabase
+      .from('challenge_progress')
+      .upsert({ challenge_id: c.id, user_id: userId, done_count: next })
+  }
+}

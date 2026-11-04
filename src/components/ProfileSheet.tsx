@@ -30,6 +30,7 @@ export function ProfileSheet({ open, onClose }: ProfileSheetProps) {
   const { user } = useAuth()
   const [displayName, setDisplayName] = useState('')
   const [avatarEmoji, setAvatarEmoji] = useState('')
+  const [timezone, setTimezone] = useState('UTC')
   const [pushState, setPushState] = useState<'unsupported' | 'denied' | 'subscribed' | 'off'>('off')
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -42,9 +43,12 @@ export function ProfileSheet({ open, onClose }: ProfileSheetProps) {
       if (result.data) {
         setDisplayName(result.data.display_name)
         setAvatarEmoji(result.data.avatar_emoji ?? '')
+        setTimezone(result.data.timezone || detectTimezone())
       }
     })
-    void updateProfileTimezone(user.id, detectTimezone())
+    void updateProfileTimezone(user.id, detectTimezone()).then((result) => {
+      if (!result.error) setTimezone(detectTimezone())
+    })
     void getPushSubscriptionState().then(setPushState)
   }, [open, user])
 
@@ -89,7 +93,7 @@ export function ProfileSheet({ open, onClose }: ProfileSheetProps) {
       setError(emojiResult.error)
       return
     }
-    const tzResult = await updateProfileTimezone(user.id, detectTimezone())
+    const tzResult = await updateProfileTimezone(user.id, timezone.trim() || detectTimezone())
     setSaving(false)
     if (tzResult.error) {
       setError(tzResult.error)
@@ -168,25 +172,43 @@ export function ProfileSheet({ open, onClose }: ProfileSheetProps) {
             />
           </div>
 
-          {isPushConfigured() ? (
-            <div className="space-y-[var(--space-2)]">
-              <p className="typo-subhead text-[var(--color-text)]">Follow-up reminders</p>
-              <Button
-                type="button"
-                variant="secondary"
-                loading={pushBusy}
-                disabled={pushState === 'unsupported' || pushState === 'denied'}
-                onClick={() => void togglePush()}
-              >
-                {pushState === 'subscribed' ? 'Turn off notifications' : 'Enable reminders'}
-              </Button>
-              {pushState === 'denied' ? (
-                <p className="typo-footnote text-[var(--color-text-muted)]">
-                  Notifications are blocked in browser settings.
-                </p>
-              ) : null}
-            </div>
-          ) : null}
+          <Input
+            label="Timezone"
+            name="timezone"
+            value={timezone}
+            onChange={(e) => setTimezone(e.target.value)}
+            aria-describedby="profile-timezone-hint"
+          />
+          <p id="profile-timezone-hint" className="typo-footnote text-[var(--color-text-muted)]">
+            Used for joint streak and evening nudges. Updates from this device on open; save to keep your name and
+            emoji changes.
+          </p>
+
+          <div className="space-y-[var(--space-2)]">
+            <p className="typo-subhead text-[var(--color-text)]">Follow-up reminders</p>
+            {isPushConfigured() ? (
+              <>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  loading={pushBusy}
+                  disabled={pushState === 'unsupported' || pushState === 'denied'}
+                  onClick={() => void togglePush()}
+                >
+                  {pushState === 'subscribed' ? 'Turn off notifications' : 'Enable reminders'}
+                </Button>
+                {pushState === 'denied' ? (
+                  <p className="typo-footnote text-[var(--color-text-muted)]">
+                    Notifications are blocked in browser settings.
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              <p className="typo-footnote text-[var(--color-text-muted)]">
+                Reminders are not configured on this site yet (missing VAPID public key on the build).
+              </p>
+            )}
+          </div>
 
           {error ? (
             <p role="alert" className="typo-subhead text-[var(--color-danger)]">

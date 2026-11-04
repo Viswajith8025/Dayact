@@ -49,15 +49,15 @@ export function LoginPage() {
     setError(null)
     setSubmitting(true)
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
     })
 
     setSubmitting(false)
 
-    if (signInError) {
-      setError('Check your email and password, then try again.')
+    if (signInError || !data.session) {
+      setError(signInError?.message ?? 'Check your email and password, then try again.')
     }
   }
 
@@ -97,7 +97,7 @@ export function LoginPage() {
             />
 
             {error ? (
-              <p role="alert" className="typo-subhead text-[var(--color-danger)]">
+              <p role="alert" aria-live="assertive" className="typo-subhead text-[var(--color-danger)]">
                 {error}
               </p>
             ) : null}

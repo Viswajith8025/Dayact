@@ -27,7 +27,20 @@ async function deleteActivityRow(page: Page, title: string) {
   const deleteDone = waitForActivityDelete(page)
   await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click()
   await deleteDone
-  await expect(page.getByText(title)).toHaveCount(0, { timeout: 15_000 })
+  await expect(page.getByText(title, { exact: false })).toHaveCount(0, { timeout: 15_000 })
+}
+
+async function cleanupQaActivities(page: Page) {
+  await page.goto('/today')
+  await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible({ timeout: 20_000 })
+
+  for (let attempt = 0; attempt < 25; attempt += 1) {
+    const qaRow = page.getByRole('listitem').filter({ hasText: '[QA]' }).first()
+    if ((await qaRow.count()) === 0) break
+    const titleLine = (await qaRow.innerText()).split('\n')[0]?.trim()
+    if (!titleLine) break
+    await deleteActivityRow(page, titleLine)
+  }
 }
 
 test.describe('signed-in flows', () => {
@@ -43,12 +56,21 @@ test.describe('signed-in flows', () => {
     await expect(page).toHaveURL(/\/today/, { timeout: 20_000 })
   })
 
+  test.afterEach(async ({ page }) => {
+    if (!email || !password) return
+    await cleanupQaActivities(page)
+  })
+
   test('today page and navigation', async ({ page }) => {
     await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible()
-    await page.getByRole('link', { name: 'Follow-ups' }).click()
+    const followUps = page.getByRole('link', { name: 'Follow-ups' })
+    await followUps.scrollIntoViewIfNeeded()
+    await followUps.click()
     await expect(page).toHaveURL(/\/followups/)
     await expect(page.getByRole('heading', { name: 'Follow-ups' })).toBeVisible()
-    await page.getByRole('link', { name: 'Achievements' }).click()
+    const achievements = page.getByRole('link', { name: 'Achievements' })
+    await achievements.scrollIntoViewIfNeeded()
+    await achievements.click()
     await expect(page).toHaveURL(/\/achievements/)
     await expect(page.getByRole('heading', { name: 'Achievements' })).toBeVisible()
   })
@@ -125,5 +147,18 @@ test.describe('signed-in flows', () => {
   test('weekly recap flag on today', async ({ page }) => {
     await page.goto('/today?recap=1')
     await expect(page.getByRole('region', { name: 'Weekly recap' })).toBeVisible({ timeout: 15_000 })
+  })
+})
+
+test.describe('login', () => {
+  test('wrong password shows error', async ({ page }) => {
+    test.skip(!email || !password, 'Set DAYACT_TEST_EMAIL and DAYACT_TEST_PASSWORD in .env')
+
+    await page.goto('/login')
+    await page.getByLabel('Email').fill(email!)
+    await page.getByLabel('Password').fill('definitely-wrong-password')
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    await expect(page.getByRole('alert')).toBeVisible({ timeout: 10_000 })
+    await expect(page).toHaveURL(/\/login/)
   })
 })

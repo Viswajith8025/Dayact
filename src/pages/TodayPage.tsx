@@ -38,7 +38,7 @@ import {
   userBadgeColor,
   type ActivityWithOwner,
 } from '../lib/activities'
-import { incrementChallengeProgress } from '../lib/challenges'
+import { incrementChallengeProgress, decrementChallengeProgressForDone } from '../lib/challenges'
 import { upsertReaction, subscribeReactions, type ReactionEmoji } from '../lib/reactions'
 
 function ListSkeleton() {
@@ -530,6 +530,9 @@ export function TodayPage() {
     if (result.error) {
       setError(result.error)
       return
+    }
+    if (activity.status === 'done' && user) {
+      void decrementChallengeProgressForDone(user.id)
     }
     setActivities((prev) => prev.filter((row) => row.id !== activity.id))
     notifyActivitiesChanged()

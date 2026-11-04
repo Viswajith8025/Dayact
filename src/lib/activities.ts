@@ -43,7 +43,7 @@ export function notifyActivitiesChanged(): void {
 const ACTIVITY_COLUMNS =
   'id,user_id,title,notes,planned_for,planned_time,status,progress_pct,completed_at,follow_up_on,follow_up_done,reschedule_reason,continued_from_id,mood,created_at'
 
-const PROFILE_COLUMNS = 'id,display_name,avatar_emoji'
+const PROFILE_COLUMNS = 'id,display_name,avatar_emoji,timezone'
 
 /** Local calendar date for API filters — never use toISOString().slice(0, 10). */
 export function localDateString(date: Date = new Date()): string {
@@ -571,7 +571,7 @@ export async function remove(id: string): Promise<Result<null>> {
 
 export async function getMyProfile(
   userId: string,
-): Promise<Result<{ display_name: string; avatar_emoji: string | null }>> {
+): Promise<Result<{ display_name: string; avatar_emoji: string | null; timezone: string }>> {
   const { data, error } = await supabase
     .from('profiles')
     .select(PROFILE_COLUMNS)
@@ -586,6 +586,7 @@ export async function getMyProfile(
     data: {
       display_name: data?.display_name ?? '',
       avatar_emoji: data?.avatar_emoji ?? null,
+      timezone: data?.timezone ?? 'UTC',
     },
     error: null,
   }

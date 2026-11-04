@@ -20,7 +20,9 @@ export function WeeklyRecapCard({ forceShow }: WeeklyRecapCardProps) {
   const { user } = useAuth()
   const cardRef = useRef<HTMLDivElement>(null)
   const [visible, setVisible] = useState(false)
-  const [summary, setSummary] = useState<string>('')
+  const [summary, setSummary] = useState('')
+  const [shareState, setShareState] = useState<'idle' | 'working' | 'done' | 'error'>('idle')
+  const [shareMessage, setShareMessage] = useState<string | null>(null)
 
   useEffect(() => {
     const day = new Date().getDay()
@@ -50,30 +52,73 @@ export function WeeklyRecapCard({ forceShow }: WeeklyRecapCardProps) {
 
   if (!visible) return null
 
+  function downloadDataUrl(dataUrl: string, fileName: string) {
+    const a = document.createElement('a')
+    a.href = dataUrl
+    a.download = fileName
+    a.rel = 'noopener'
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+  }
+
   async function shareCard() {
     const el = cardRef.current
     if (!el) return
-    const { toPng } = await import('html-to-image')
-    const dataUrl = await toPng(el, { pixelRatio: 2 })
-    const blob = await (await fetch(dataUrl)).blob()
-    const file = new File([blob], `dayact-recap-${localDateString()}.png`, { type: 'image/png' })
-    if (navigator.share) {
-      await navigator.share({ title: 'Dayact weekly recap', files: [file] })
-      return
+    setShareState('working')
+    setShareMessage(null)
+    try {
+      const { toPng } = await import('html-to-image')
+      const dataUrl = await toPng(el, { pixelRatio: 2, cacheBust: true })
+      const fileName = `dayact-recap-${localDateString()}.png`
+      const blob = await (await fetch(dataUrl)).blob()
+      const file = new File([blob], fileName, { type: 'image/png' })
+
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        try {
+          await navigator.share({ title: 'Dayact weekly recap', files: [file] })
+          setShareState('done')
+          setShareMessage('Shared.')
+          return
+        } catch (shareError) {
+          if (shareError instanceof DOMException && shareError.name === 'AbortError') {
+            setShareState('idle')
+            return
+          }
+        }
+      }
+
+      downloadDataUrl(dataUrl, fileName)
+      setShareState('done')
+      setShareMessage('Downloaded PNG.')
+    } catch {
+      setShareState('error')
+      setShareMessage('Could not create the recap image. Try again.')
     }
-    const a = document.createElement('a')
-    a.href = dataUrl
-    a.download = file.name
-    a.click()
   }
 
   return (
-    <section ref={cardRef} className="week-duel-card space-y-[var(--space-3)]" aria-label="Weekly recap">
-      <h2 className="typo-headline text-[var(--color-text)]">Weekly recap</h2>
-      <p className="typo-subhead text-[var(--color-text-muted)]">{summary || 'Loading recap…'}</p>
-      <Button type="button" variant="secondary" onClick={() => void shareCard()}>
+    <section className="week-duel-card space-y-[var(--space-3)]" aria-label="Weekly recap">
+      <div ref={cardRef} className="space-y-[var(--space-2)]">
+        <h2 className="typo-headline text-[var(--color-text)]">Weekly recap</h2>
+        <p className="typo-subhead text-[var(--color-text-muted)]">{summary || 'Loading recap…'}</p>
+      </div>
+      <Button
+        type="button"
+        variant="secondary"
+        loading={shareState === 'working'}
+        onClick={() => void shareCard()}
+      >
         Share recap
       </Button>
+      {shareMessage ? (
+        <p
+          role="status"
+          className={`typo-footnote ${shareState === 'error' ? 'text-[var(--color-danger)]' : 'text-[var(--color-text-muted)]'}`}
+        >
+          {shareMessage}
+        </p>
+      ) : null}
     </section>
   )
 }

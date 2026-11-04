@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import { AppShell } from './components/AppShell'
+import { SwUpdateBanner } from './components/SwUpdateBanner'
 import { useAuth } from './lib/auth'
 import { AchievementsPage } from './pages/AchievementsPage'
 import { FollowupsPage } from './pages/FollowupsPage'
@@ -90,5 +91,10 @@ function AppRoutes() {
 }
 
 export default function App() {
-  return <AppRoutes />
+  return (
+    <>
+      <SwUpdateBanner />
+      <AppRoutes />
+    </>
+  )
 }

@@ -3,7 +3,9 @@ import { Button } from '../components/Button'
 import { Input } from '../components/Input'
 import { useAuth } from '../lib/auth'
 import {
+  cancelChallenge,
   createChallenge,
+  deleteChallenge,
   listChallengeProgress,
   listChallenges,
   type Challenge,
@@ -19,9 +21,14 @@ export function ChallengesPage() {
   const [target, setTarget] = useState(5)
   const [days, setDays] = useState(7)
   const [error, setError] = useState<string | null>(null)
+  const [creating, setCreating] = useState(false)
 
   async function load() {
     const result = await listChallenges()
+    if (result.error) {
+      setError(result.error)
+      return
+    }
     setChallenges(result.data)
     const map = await listChallengeProgress(result.data.map((c) => c.id))
     setProgress(map)
@@ -32,7 +39,9 @@ export function ChallengesPage() {
   }, [])
 
   async function handleCreate() {
-    if (!user) return
+    if (!user || creating) return
+    setCreating(true)
+    setError(null)
     const result = await createChallenge({
       userId: user.id,
       title: title || '[QA] Challenge',
@@ -40,12 +49,33 @@ export function ChallengesPage() {
       durationDays: days,
       startDate: localDateString(),
     })
+    setCreating(false)
     if (result.error) {
       setError(result.error)
       return
     }
     setTitle('')
-    void load()
+    await load()
+  }
+
+  async function handleCancel(id: string) {
+    setError(null)
+    const result = await cancelChallenge(id)
+    if (result.error) {
+      setError(result.error)
+      return
+    }
+    await load()
+  }
+
+  async function handleDelete(id: string) {
+    setError(null)
+    const result = await deleteChallenge(id)
+    if (result.error) {
+      setError(result.error)
+      return
+    }
+    await load()
   }
 
   return (
@@ -71,7 +101,7 @@ export function ChallengesPage() {
         {error ? (
           <p className="typo-footnote text-[var(--color-danger)]">{error}</p>
         ) : null}
-        <Button type="button" onClick={() => void handleCreate()}>
+        <Button type="button" loading={creating} onClick={() => void handleCreate()}>
           Start challenge
         </Button>
       </div>
@@ -79,13 +109,26 @@ export function ChallengesPage() {
       <ul className="grouped-list">
         {challenges.map((c) => {
           const rows = progress.get(c.id) ?? []
+          const canManage = c.created_by === user?.id
           return (
             <li key={c.id} className="grouped-row flex-col items-stretch gap-[var(--space-3)]">
-              <div>
-                <p className="typo-headline text-[var(--color-text)]">{c.title}</p>
-                <p className="typo-footnote text-[var(--color-text-muted)]">
-                  {c.status} · target {c.target_count} in {c.duration_days} days
-                </p>
+              <div className="flex flex-wrap items-start justify-between gap-[var(--space-2)]">
+                <div>
+                  <p className="typo-headline text-[var(--color-text)]">{c.title}</p>
+                  <p className="typo-footnote text-[var(--color-text-muted)]">
+                    {c.status} · target {c.target_count} in {c.duration_days} days
+                  </p>
+                </div>
+                {canManage && c.status === 'active' ? (
+                  <Button type="button" variant="tertiary" onClick={() => void handleCancel(c.id)}>
+                    Cancel
+                  </Button>
+                ) : null}
+                {canManage && c.status === 'cancelled' ? (
+                  <Button type="button" variant="destructive" onClick={() => void handleDelete(c.id)}>
+                    Delete
+                  </Button>
+                ) : null}
               </div>
               {rows.map((row) => (
                 <div key={row.user_id} className="space-y-[var(--space-1)]">

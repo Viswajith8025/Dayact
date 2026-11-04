@@ -314,7 +314,7 @@ export function AppShell() {
             </>
           )}
         </header>
-        <main className="mx-auto w-full max-w-[var(--content-max)] flex-1 px-[var(--space-page)] pb-[calc(var(--nav-height)+env(safe-area-inset-bottom)+var(--space-6))] pt-[var(--space-4)] md:pb-[var(--space-section)] md:pt-[var(--space-section)]">
+        <main className="mx-auto w-full max-w-[var(--content-max)] flex-1 px-[var(--space-page)] pb-[calc(var(--nav-height)+env(safe-area-inset-bottom)+var(--space-6))] pt-[calc(var(--space-4)+3.5rem)] md:pb-[var(--space-section)] md:pt-[var(--space-section)]">
           <ConnectionGate>
             <div key={location.pathname} className="motion-page-enter">
               <Outlet />
@@ -329,7 +329,7 @@ export function AppShell() {
         >
           <AppNav layout="tabs" followUpBadge={followUpBadge} badgePop={badgePop} />
         </nav>
-        <InstallPromptBar />
+        <InstallPromptBar anchor="top" />
       </div>
     </div>
   )

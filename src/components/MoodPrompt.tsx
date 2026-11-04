@@ -13,6 +13,8 @@ type MoodPromptProps = {
 
 export function MoodPrompt({ activity, onClose, onSaved }: MoodPromptProps) {
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [saved, setSaved] = useState(false)
 
   useEffect(() => {
     if (!activity) return
@@ -31,11 +33,16 @@ export function MoodPrompt({ activity, onClose, onSaved }: MoodPromptProps) {
   async function pick(mood: number) {
     if (saving) return
     setSaving(true)
+    setError(null)
     const result = await setActivityMood(activity!.id, mood)
     setSaving(false)
-    if (result.error || !result.data) return
+    if (result.error || !result.data) {
+      setError(result.error ?? 'Could not save mood.')
+      return
+    }
+    setSaved(true)
     onSaved(result.data)
-    onClose()
+    window.setTimeout(() => onClose(), 400)
   }
 
   return (
@@ -66,6 +73,16 @@ export function MoodPrompt({ activity, onClose, onSaved }: MoodPromptProps) {
               </button>
             ))}
           </div>
+          {saved ? (
+            <p role="status" className="typo-footnote text-[var(--color-text-muted)]">
+              Saved.
+            </p>
+          ) : null}
+          {error ? (
+            <p role="alert" className="typo-footnote text-[var(--color-danger)]">
+              {error}
+            </p>
+          ) : null}
           <Button type="button" variant="tertiary" onClick={onClose}>
             Skip
           </Button>
