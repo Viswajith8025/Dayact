@@ -56,10 +56,16 @@ export function ProductivityDuelStrip({ youPct, teammatePct, teammateName }: Due
   const youLead =
     youPct !== null && teammatePct !== null ? youPct > teammatePct : youPct !== null && teammatePct === null
 
+  const name = teammateName.trim() || 'Teammate'
+
   return (
-    <p className="typo-footnote text-[var(--color-text-muted)]">
+    <p className="typo-footnote tabular-nums text-[var(--color-text-muted)]">
       {youLead ? <span aria-hidden>👑 </span> : null}
-      You {youLabel} · {teammateName.trim() || 'Teammate'} {themLabel}
+      <span>You · {youLabel}</span>
+      <span aria-hidden> · </span>
+      <span>
+        {name} · {themLabel}
+      </span>
     </p>
   )
 }

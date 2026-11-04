@@ -92,6 +92,14 @@ test.describe('signed-in flows', () => {
     await page.getByRole('button', { name: 'Cancel' }).click()
   })
 
+  test('today calendar jump opens in-app picker', async ({ page }) => {
+    await page.getByRole('button', { name: 'Jump to date' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Pick a date' })
+    await expect(dialog).toBeVisible()
+    await dialog.getByRole('button', { name: 'Today' }).click()
+    await expect(dialog).toHaveCount(0)
+  })
+
   test('today shows productivity progress for signed-in user', async ({ page }) => {
     await expect(page.getByRole('progressbar', { name: 'You productivity' })).toBeVisible()
     await expect(page.getByRole('region', { name: 'Joint streak' })).toBeVisible()

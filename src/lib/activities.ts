@@ -43,7 +43,7 @@ export function notifyActivitiesChanged(): void {
 const ACTIVITY_COLUMNS =
   'id,user_id,title,notes,planned_for,planned_time,status,progress_pct,completed_at,follow_up_on,follow_up_done,reschedule_reason,continued_from_id,mood,created_at'
 
-const PROFILE_COLUMNS = 'id,display_name,avatar_emoji,timezone'
+const PROFILE_COLUMNS = 'id,display_name,avatar_emoji,timezone,partner_nickname'
 
 /** Local calendar date for API filters — never use toISOString().slice(0, 10). */
 export function localDateString(date: Date = new Date()): string {
@@ -571,7 +571,14 @@ export async function remove(id: string): Promise<Result<null>> {
 
 export async function getMyProfile(
   userId: string,
-): Promise<Result<{ display_name: string; avatar_emoji: string | null; timezone: string }>> {
+): Promise<
+  Result<{
+    display_name: string
+    avatar_emoji: string | null
+    timezone: string
+    partner_nickname: string | null
+  }>
+> {
   const { data, error } = await supabase
     .from('profiles')
     .select(PROFILE_COLUMNS)
@@ -587,9 +594,33 @@ export async function getMyProfile(
       display_name: data?.display_name ?? '',
       avatar_emoji: data?.avatar_emoji ?? null,
       timezone: data?.timezone ?? 'UTC',
+      partner_nickname: data?.partner_nickname ?? null,
     },
     error: null,
   }
+}
+
+const MAX_PARTNER_NICKNAME = 40
+
+export async function updatePartnerNickname(
+  userId: string,
+  partnerNickname: string | null,
+): Promise<Result<{ partner_nickname: string | null }>> {
+  const trimmed = partnerNickname?.trim() ?? ''
+  const normalized = trimmed ? trimmed.slice(0, MAX_PARTNER_NICKNAME) : null
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({ partner_nickname: normalized })
+    .eq('id', userId)
+    .select('partner_nickname')
+    .single()
+
+  if (error) {
+    return { data: null, error: error.message }
+  }
+
+  return { data: { partner_nickname: data.partner_nickname ?? null }, error: null }
 }
 
 export async function updateDisplayName(

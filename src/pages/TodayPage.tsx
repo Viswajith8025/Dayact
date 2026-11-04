@@ -1,5 +1,5 @@
 import { addDays, format } from 'date-fns'
-import { ChevronLeft, ChevronRight, Flag, MoreVertical } from 'lucide-react'
+import { Calendar, ChevronLeft, ChevronRight, Flag, MoreVertical } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ActivitySheet } from '../components/ActivitySheet'
@@ -9,6 +9,7 @@ import { JointStreakCard } from '../components/JointStreakCard'
 import { MoodPrompt } from '../components/MoodPrompt'
 import { PlanWeekSheet } from '../components/PlanWeekSheet'
 import { WeeklyRecapCard } from '../components/WeeklyRecapCard'
+import { DateCalendarSheet } from '../components/DateCalendarSheet'
 import { DisplayNamePrompt } from '../components/DisplayNamePrompt'
 import { RescheduleReasonSheet } from '../components/RescheduleReasonSheet'
 import { SheetPortal } from '../components/SheetPortal'
@@ -39,6 +40,8 @@ import {
   type ActivityWithOwner,
 } from '../lib/activities'
 import { incrementChallengeProgress, decrementChallengeProgressForDone } from '../lib/challenges'
+import { partnerDisplayName } from '../lib/partnerLabel'
+import { sendPartnerReminder } from '../lib/partnerReminder'
 import { upsertReaction, subscribeReactions, type ReactionEmoji } from '../lib/reactions'
 
 function ListSkeleton() {
@@ -71,6 +74,7 @@ type ActivityRowProps = {
   onContinueTomorrow: (activity: ActivityWithOwner) => void
   onReschedule: (activity: ActivityWithOwner) => void
   onCheer: (activity: ActivityWithOwner, emoji: import('../lib/reactions').ReactionEmoji) => void
+  partnerLabel: string
 }
 
 function ActivityRow({
@@ -87,9 +91,12 @@ function ActivityRow({
   onContinueTomorrow,
   onReschedule,
   onCheer,
+  partnerLabel,
 }: ActivityRowProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
+  const [remindBusy, setRemindBusy] = useState(false)
+  const [remindNote, setRemindNote] = useState<string | null>(null)
   const menuBtnRef = useRef<HTMLButtonElement>(null)
   const isDone = activity.status === 'done'
   const isSkipped = activity.status === 'skipped'
@@ -169,10 +176,34 @@ function ActivityRow({
             ) : null}
           </div>
           <p className="typo-footnote text-[var(--color-text-muted)]">
-            {activity.display_name.trim() || 'Teammate'}
+            {(isOwn ? activity.display_name : partnerLabel).trim() || 'Teammate'}
             {timeLabel ? ` · ${timeLabel}` : ''}
             {isSkipped ? ' · Skipped' : isDone ? ' · Done' : isInProgress ? ` · ${activity.progress_pct}%` : ''}
           </p>
+          {!isOwn && !isDone && !isSkipped ? (
+            <div className="flex flex-wrap items-center gap-[var(--space-2)]">
+              <Button
+                type="button"
+                variant="secondary"
+                loading={remindBusy}
+                disabled={remindNote === 'Funny poke sent' || remindNote === 'Already poked today'}
+                onClick={() => {
+                  if (remindBusy) return
+                  setRemindBusy(true)
+                  void sendPartnerReminder(activity.id).then((result) => {
+                    setRemindBusy(false)
+                    if (!result.ok) setRemindNote(result.error)
+                    else setRemindNote(result.deduped ? 'Already poked today' : 'Funny poke sent')
+                  })
+                }}
+              >
+                Remind
+              </Button>
+              {remindNote ? (
+                <span className="typo-footnote text-[var(--color-text-muted)]">{remindNote}</span>
+              ) : null}
+            </div>
+          ) : null}
           {!isOwn && isDone ? (
             <div className="flex flex-wrap gap-[var(--space-1)]" role="group" aria-label="Cheer">
               {(['fist', 'fire', 'clap', 'heart'] as const).map((key) => (
@@ -340,6 +371,8 @@ export function TodayPage() {
   const [rescheduleTarget, setRescheduleTarget] = useState<ActivityWithOwner | null>(null)
   const [moodTarget, setMoodTarget] = useState<ActivityWithOwner | null>(null)
   const [planWeekOpen, setPlanWeekOpen] = useState(false)
+  const [calendarOpen, setCalendarOpen] = useState(false)
+  const [partnerNickname, setPartnerNickname] = useState<string | null>(null)
   const [exitingId, setExitingId] = useState<string | null>(null)
   const toggleInFlight = useRef(new Set<string>())
 
@@ -400,6 +433,7 @@ export function TodayPage() {
       }
       setDisplayName(result.data?.display_name ?? '')
       setAvatarEmoji(result.data?.avatar_emoji ?? null)
+      setPartnerNickname(result.data?.partner_nickname ?? null)
     })
     void getTeammateProfile(user.id).then((result) => {
       if (!active || result.error) return
@@ -417,6 +451,7 @@ export function TodayPage() {
         if (result.data) {
           setDisplayName(result.data.display_name)
           setAvatarEmoji(result.data.avatar_emoji)
+          setPartnerNickname(result.data.partner_nickname ?? null)
         }
       })
       void getTeammateProfile(user.id).then((result) => {
@@ -607,6 +642,14 @@ export function TodayPage() {
     displayNamePromptOpen
 
   const pageTitle = selectedDate === today ? 'Today' : format(selectedDateObj, 'EEE, d MMM')
+  const jumpDateLabel =
+    selectedDate === today
+      ? format(selectedDateObj, 'd MMM')
+      : format(selectedDateObj, 'EEE, d MMM yyyy')
+  const teammateLabel = partnerDisplayName({
+    myPartnerNickname: partnerNickname,
+    theirDisplayName: teammate?.display_name,
+  })
 
   const emptyCopy =
     selectedDate === today
@@ -645,28 +688,32 @@ export function TodayPage() {
       ) : null}
 
       <header className="space-y-[var(--space-4)]">
-        <div className="flex flex-wrap items-end justify-between gap-[var(--space-3)]">
+        <div className="space-y-[var(--space-3)]">
           <div>
             <h1 className="typo-large-title text-[var(--color-text)]">{pageTitle}</h1>
             <p className="typo-subhead text-[var(--color-text-muted)]">{headingDate}</p>
             <div ref={titleSentinelRef} className="h-px w-full" aria-hidden />
           </div>
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => setPlanWeekOpen(true)}
-          >
-            Plan my week
-          </Button>
-          <Button
-            type="button"
-            onClick={() => {
-              setEditing(null)
-              setSheetOpen(true)
-            }}
-          >
-            Add activity
-          </Button>
+          <div className="flex flex-col gap-[var(--space-2)] sm:flex-row sm:flex-wrap">
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full sm:w-auto"
+              onClick={() => setPlanWeekOpen(true)}
+            >
+              Plan my week
+            </Button>
+            <Button
+              type="button"
+              className="w-full sm:w-auto"
+              onClick={() => {
+                setEditing(null)
+                setSheetOpen(true)
+              }}
+            >
+              Add activity
+            </Button>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-[var(--space-2)]">
@@ -696,20 +743,20 @@ export function TodayPage() {
           >
             <ChevronRight size={20} aria-hidden />
           </Button>
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => {
-              const value = e.target.value
-              if (parsePlannedDate(value)) setDateInUrl(value)
-            }}
-            className="field-input tabular-nums w-auto min-w-0 flex-1 sm:flex-none"
+          <Button
+            type="button"
+            variant="tertiary"
+            className="inline-flex min-w-0 items-center gap-[var(--space-2)] tabular-nums"
             aria-label="Jump to date"
-          />
+            onClick={() => setCalendarOpen(true)}
+          >
+            <Calendar size={18} aria-hidden />
+            <span className="truncate">{jumpDateLabel}</span>
+          </Button>
         </div>
 
         {user ? (
-          <div className="space-y-[var(--space-3)]">
+          <div className="week-duel-card mb-[var(--space-4)] space-y-[var(--space-3)] border-b border-[var(--color-separator)] pb-[var(--space-4)]">
             <JointStreakCard />
             {showRecap ? <WeeklyRecapCard forceShow={searchParams.get('recap') === '1'} /> : null}
             <DayProgressBar
@@ -721,20 +768,29 @@ export function TodayPage() {
             />
             {teammate ? (
               <DayProgressBar
-                label={teammate.display_name.trim() || 'Teammate'}
+                label={teammateLabel}
                 activity={teammateProfile}
                 userId={teammate.id}
                 items={activities}
               />
             ) : null}
-            <ProductivityDuelStrip
-              youPct={youPct}
-              teammatePct={teammatePct}
-              teammateName={teammate?.display_name ?? 'Teammate'}
-            />
+            <div className="mt-[var(--space-3)] border-t border-[var(--color-separator)] pt-[var(--space-2)]">
+              <ProductivityDuelStrip
+                youPct={youPct}
+                teammatePct={teammatePct}
+                teammateName={teammateLabel}
+              />
+            </div>
           </div>
         ) : null}
       </header>
+
+      <DateCalendarSheet
+        open={calendarOpen}
+        onClose={() => setCalendarOpen(false)}
+        value={selectedDate}
+        onSelect={setDateInUrl}
+      />
 
       {error ? (
         <div className="space-y-[var(--space-3)] rounded-[var(--radius-group)] bg-[var(--color-danger-surface)] px-[var(--space-4)] py-[var(--space-4)]">
@@ -774,6 +830,7 @@ export function TodayPage() {
               onContinueTomorrow={handleContinueTomorrow}
               onReschedule={setRescheduleTarget}
               onCheer={handleCheer}
+              partnerLabel={teammateLabel}
             />
           ))}
         </ul>

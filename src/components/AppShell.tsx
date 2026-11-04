@@ -5,6 +5,7 @@ import { AchievementCelebrations } from './AchievementCelebrations'
 import { ConnectionGate } from './ConnectionGate'
 import { DayactBrand } from './DayactBrand'
 import { InstallHeaderPill, InstallMenuAction, InstallPromptBar } from './InstallPrompt'
+import { useInstall } from '../lib/install'
 import { ProfileSheet } from './ProfileSheet'
 import { ThemeToggle } from './ThemeToggle'
 import { useAuth } from '../lib/auth'
@@ -170,6 +171,7 @@ function SessionFooter({
 
 export function AppShell() {
   const { user } = useAuth()
+  const { barVisible: installBarVisible } = useInstall()
   const location = useLocation()
   const [followUpBadge, setFollowUpBadge] = useState(0)
   const [badgePop, setBadgePop] = useState(false)
@@ -314,7 +316,9 @@ export function AppShell() {
             </>
           )}
         </header>
-        <main className="mx-auto w-full max-w-[var(--content-max)] flex-1 px-[var(--space-page)] pb-[calc(var(--nav-height)+env(safe-area-inset-bottom)+var(--space-6))] pt-[calc(var(--space-4)+3.5rem)] md:pb-[var(--space-section)] md:pt-[var(--space-section)]">
+        <main
+          className={`mx-auto w-full max-w-[var(--content-max)] flex-1 px-[var(--space-page)] pb-[calc(var(--nav-height)+env(safe-area-inset-bottom)+var(--space-6)+4rem)] pt-[var(--space-4)] md:pb-[var(--space-section)] md:pt-[var(--space-section)]${installBarVisible ? ' max-md:pt-[calc(var(--space-4)+3.25rem)]' : ''}`}
+        >
           <ConnectionGate>
             <div key={location.pathname} className="motion-page-enter">
               <Outlet />

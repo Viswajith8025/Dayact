@@ -2,12 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { ActivitySheet } from '../components/ActivitySheet'
 import { Button } from '../components/Button'
 import { RescheduleReasonSheet } from '../components/RescheduleReasonSheet'
+import { PROFILE_UPDATED_EVENT } from '../components/ProfileSheet'
 import { followUpTone, followUpWittyLine } from '../lib/followUpCopy'
 import { useAuth } from '../lib/auth'
 import {
   clearFollowUp,
   formatFollowUpRelative,
   formatPlannedForSecondary,
+  getMyProfile,
   groupOpenFollowups,
   listOpenFollowups,
   localDateString,
@@ -20,6 +22,8 @@ import {
   type ActivityWithOwner,
   type FollowUpGroup,
 } from '../lib/activities'
+import { partnerDisplayName } from '../lib/partnerLabel'
+import { sendPartnerReminder } from '../lib/partnerReminder'
 
 const groupLabels: Record<FollowUpGroup, string> = {
   overdue: 'Overdue',
@@ -31,6 +35,7 @@ type FollowUpRowProps = {
   activity: ActivityWithOwner
   isOwn: boolean
   today: string
+  partnerLabel: string
   onEdit: (activity: ActivityWithOwner) => void
   onDone: (activity: ActivityWithOwner) => void
   onReschedule: (activity: ActivityWithOwner) => void
@@ -42,12 +47,16 @@ function FollowUpRow({
   activity,
   isOwn,
   today,
+  partnerLabel,
   onEdit,
   onDone,
   onReschedule,
   onClear,
   overdue,
 }: FollowUpRowProps) {
+  const [remindBusy, setRemindBusy] = useState(false)
+  const [remindNote, setRemindNote] = useState<string | null>(null)
+  const ownerLabel = isOwn ? activity.display_name : partnerLabel
   const witty = followUpWittyLine(
     followUpTone(activity.follow_up_on!, today),
     activity.id,
@@ -83,7 +92,7 @@ function FollowUpRow({
                 </p>
               ) : null}
               <p className="typo-footnote text-[var(--color-text-muted)]">
-                {activity.display_name.trim() || 'Teammate'} ·{' '}
+                {ownerLabel.trim() || 'Teammate'} ·{' '}
                 {formatPlannedForSecondary(activity.planned_for)}
               </p>
             </button>
@@ -104,11 +113,36 @@ function FollowUpRow({
                 </p>
               ) : null}
               <p className="typo-footnote text-[var(--color-text-muted)]">
-                {activity.display_name.trim() || 'Teammate'} ·{' '}
+                {ownerLabel.trim() || 'Teammate'} ·{' '}
                 {formatPlannedForSecondary(activity.planned_for)}
               </p>
             </div>
           )}
+
+          {!isOwn ? (
+            <div className="flex flex-wrap items-center gap-[var(--space-2)]">
+              <Button
+                type="button"
+                variant="secondary"
+                loading={remindBusy}
+                disabled={remindNote === 'Funny poke sent' || remindNote === 'Already poked today'}
+                onClick={() => {
+                  if (remindBusy) return
+                  setRemindBusy(true)
+                  void sendPartnerReminder(activity.id).then((result) => {
+                    setRemindBusy(false)
+                    if (!result.ok) setRemindNote(result.error)
+                    else setRemindNote(result.deduped ? 'Already poked today' : 'Funny poke sent')
+                  })
+                }}
+              >
+                Remind
+              </Button>
+              {remindNote ? (
+                <span className="typo-footnote text-[var(--color-text-muted)]">{remindNote}</span>
+              ) : null}
+            </div>
+          ) : null}
 
           {isOwn ? (
             <div className="flex flex-wrap gap-[var(--space-2)]">
@@ -155,6 +189,40 @@ export function FollowupsPage() {
   const [editing, setEditing] = useState<ActivityWithOwner | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [rescheduleTarget, setRescheduleTarget] = useState<ActivityWithOwner | null>(null)
+  const [partnerNickname, setPartnerNickname] = useState<string | null>(null)
+  const [teammateName, setTeammateName] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!user) return
+    void getMyProfile(user.id).then((result) => {
+      if (result.data) setPartnerNickname(result.data.partner_nickname ?? null)
+    })
+  }, [user])
+
+  useEffect(() => {
+    if (!user) return
+    const refresh = () => {
+      void getMyProfile(user.id).then((result) => {
+        if (result.data) setPartnerNickname(result.data.partner_nickname ?? null)
+      })
+    }
+    window.addEventListener(PROFILE_UPDATED_EVENT, refresh)
+    return () => window.removeEventListener(PROFILE_UPDATED_EVENT, refresh)
+  }, [user])
+
+  useEffect(() => {
+    for (const row of items) {
+      if (row.user_id !== user?.id) {
+        setTeammateName(row.display_name)
+        break
+      }
+    }
+  }, [items, user?.id])
+
+  const partnerLabel = partnerDisplayName({
+    myPartnerNickname: partnerNickname,
+    theirDisplayName: teammateName,
+  })
 
   useEffect(() => {
     const el = titleSentinelRef.current
@@ -264,6 +332,7 @@ export function FollowupsPage() {
                   activity={activity}
                   isOwn={activity.user_id === user?.id}
                   today={today}
+                  partnerLabel={partnerLabel}
                   overdue={groupKey === 'overdue'}
                   onEdit={(row) => {
                     setEditing(row)

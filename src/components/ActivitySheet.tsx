@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Button } from './Button'
+import { DatePickField } from './DateCalendarSheet'
 import { Input } from './Input'
 import { SheetPortal } from './SheetPortal'
 import type { ActivityWithOwner } from '../lib/activities'
@@ -232,13 +233,12 @@ export function ActivitySheet({
           />
         </label>
 
-        <Input
+        <DatePickField
           label="Plan for date"
           name="planned_for"
-          type="date"
           required
           value={plannedFor}
-          onChange={(e) => setPlannedFor(e.target.value)}
+          onChange={setPlannedFor}
         />
 
         <Input
@@ -249,12 +249,11 @@ export function ActivitySheet({
           onChange={(e) => setPlannedTime(e.target.value)}
         />
 
-        <Input
+        <DatePickField
           label="Follow-up date (optional)"
           name="follow_up_on"
-          type="date"
           value={followUpOn}
-          onChange={(e) => setFollowUpOn(e.target.value)}
+          onChange={setFollowUpOn}
         />
 
         {error ? (

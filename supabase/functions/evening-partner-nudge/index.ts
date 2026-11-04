@@ -1,3 +1,4 @@
+import { eveningNudgePushCopy } from "../_shared/followUpCopy.ts"
 import { createClient } from "npm:@supabase/supabase-js@2.49.1"
 import webpush from "npm:web-push@3.6.7"
 
@@ -66,7 +67,7 @@ Deno.serve(async (req) => {
 
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("id,timezone,last_evening_nudge_date")
+    .select("id,timezone,last_evening_nudge_date,display_name")
   const profileById = new Map((profiles ?? []).map((p: { id: string }) => [p.id, p]))
 
   const { data: subs } = await supabase.from("push_subscriptions").select("user_id,endpoint,p256dh,auth")
@@ -108,9 +109,9 @@ Deno.serve(async (req) => {
 
     if ((partnerDone ?? 0) === 0) continue
 
-    const body =
-      "Your partner logged wins today. Log one done item before bed and keep the joint streak alive."
-    const title = "Dayact nudge"
+    const partnerProfile = profileById.get(partner.id) as { display_name?: string } | undefined
+    const partnerName = partnerProfile?.display_name?.trim() ?? "Your partner"
+    const { title, body } = eveningNudgePushCopy(partnerName, profile.id, localDate)
 
     try {
       await webpush.sendNotification(

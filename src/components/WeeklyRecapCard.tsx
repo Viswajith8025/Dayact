@@ -52,14 +52,16 @@ export function WeeklyRecapCard({ forceShow }: WeeklyRecapCardProps) {
 
   if (!visible) return null
 
-  function downloadDataUrl(dataUrl: string, fileName: string) {
+  function downloadBlob(blob: Blob, fileName: string) {
+    const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href = dataUrl
+    a.href = url
     a.download = fileName
     a.rel = 'noopener'
     document.body.appendChild(a)
     a.click()
     a.remove()
+    URL.revokeObjectURL(url)
   }
 
   async function shareCard() {
@@ -68,10 +70,10 @@ export function WeeklyRecapCard({ forceShow }: WeeklyRecapCardProps) {
     setShareState('working')
     setShareMessage(null)
     try {
-      const { toPng } = await import('html-to-image')
-      const dataUrl = await toPng(el, { pixelRatio: 2, cacheBust: true })
+      const { toBlob } = await import('html-to-image')
+      const blob = await toBlob(el, { pixelRatio: 2, cacheBust: true, type: 'image/png' })
+      if (!blob) throw new Error('empty blob')
       const fileName = `dayact-recap-${localDateString()}.png`
-      const blob = await (await fetch(dataUrl)).blob()
       const file = new File([blob], fileName, { type: 'image/png' })
 
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
@@ -88,7 +90,7 @@ export function WeeklyRecapCard({ forceShow }: WeeklyRecapCardProps) {
         }
       }
 
-      downloadDataUrl(dataUrl, fileName)
+      downloadBlob(blob, fileName)
       setShareState('done')
       setShareMessage('Downloaded PNG.')
     } catch {

@@ -36,8 +36,30 @@ In the Netlify site **Environment variables**, set only:
 
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
+- `VITE_VAPID_PUBLIC_KEY` (optional; enables Profile → Enable reminders)
 
 Connect the GitHub repo (or run `netlify deploy --prod` with the CLI). After deploy, complete the Supabase steps below.
+
+## CI (GitHub Actions)
+
+The workflow in `.github/workflows/ci.yml` runs `npm run build` and Playwright. For **full** signed-in e2e in CI, add these **repository secrets** (Settings → Secrets and variables → Actions):
+
+| Secret | Purpose |
+|--------|---------|
+| `VITE_SUPABASE_URL` | Same as production/local |
+| `VITE_SUPABASE_ANON_KEY` | Anon key only |
+| `DAYACT_TEST_EMAIL` | E2e dashboard user |
+| `DAYACT_TEST_PASSWORD` | That user’s password |
+
+Without `DAYACT_*`, CI still runs smoke tests; signed-in tests skip.
+
+## PWA icons
+
+Regenerate the maskable icon (80% safe-zone padding) after changing `public/icons/icon-512.png`:
+
+```bash
+npm run icons:maskable
+```
 
 ## Supabase (required for production)
 

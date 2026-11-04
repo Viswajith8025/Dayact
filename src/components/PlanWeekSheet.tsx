@@ -40,6 +40,12 @@ export function PlanWeekSheet({ open, onClose }: PlanWeekSheetProps) {
 
   if (!open || !user) return null
 
+  const tomorrow = localDateString(addDays(new Date(), 1))
+
+  function planFromTomorrow(days: { date: string; suggestions: string[] }[]) {
+    return days.filter((day) => day.date >= tomorrow).slice(0, 7)
+  }
+
   async function runSuggest() {
     setLoading(true)
     setSlow(false)
@@ -57,7 +63,7 @@ export function PlanWeekSheet({ open, onClose }: PlanWeekSheetProps) {
       setError(result.error)
       return
     }
-    setPreview(result.data ?? [])
+    setPreview(planFromTomorrow(result.data ?? []))
   }
 
   async function applyPlan() {
@@ -84,7 +90,7 @@ export function PlanWeekSheet({ open, onClose }: PlanWeekSheetProps) {
         <div className="sheet-panel space-y-[var(--space-4)]" onClick={(e) => e.stopPropagation()}>
           <h2 className="typo-title text-[var(--color-text)]">Plan my week</h2>
           <p className="typo-subhead text-[var(--color-text-muted)]">
-            Uses your last 30 days to suggest activities for the coming week.
+            Uses your last 30 days to suggest activities from tomorrow through the next week.
           </p>
           <Button type="button" loading={loading} onClick={() => void runSuggest()}>
             Generate plan

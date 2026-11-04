@@ -20,7 +20,7 @@ export function InstallPromptBar({ anchor = 'tabs' }: { anchor?: 'tabs' | 'scree
 
   return (
     <div
-      className={`install-prompt fixed inset-x-[var(--space-page)] z-[25]${anchor === 'tabs' ? ' md:hidden' : ''}`}
+      className={`install-prompt fixed inset-x-[var(--space-page)] z-[25]${anchor === 'tabs' || anchor === 'top' ? ' md:hidden' : ''}`}
       style={positionStyle}
       role="region"
       aria-label="Install Dayact"

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Button } from './Button'
-import { Input } from './Input'
+import { DatePickField } from './DateCalendarSheet'
 import { SheetPortal } from './SheetPortal'
 
 type RescheduleReasonSheetProps = {
@@ -77,13 +77,12 @@ export function RescheduleReasonSheet({
           <h2 id="reschedule-sheet-title" className="typo-title text-[var(--color-text)]">
             {title}
           </h2>
-          <Input
+          <DatePickField
             label={dateLabel}
             name="reschedule_date"
-            type="date"
             required
             value={date}
-            onChange={(e) => setDate(e.target.value)}
+            onChange={setDate}
           />
           <label className="flex flex-col gap-[var(--space-2)] typo-footnote text-[var(--color-text-muted)]">
             <span>Reason (required)</span>

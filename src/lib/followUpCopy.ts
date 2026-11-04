@@ -5,6 +5,7 @@ const OVERDUE_LINES = [
   'This task filed a missing-person report on you.',
   'Still waiting. The calendar is not amused.',
   'Overdue alert: your future self sent a strongly worded memo.',
+  'Hungry for closure? This one’s still on the menu.',
 ]
 
 const TODAY_LINES = [
@@ -12,6 +13,7 @@ const TODAY_LINES = [
   'Follow-up due today — knock it out and flex.',
   'The plan said today. The plan is optimistic but hopeful.',
   'One tap away from being the responsible one.',
+  'Due today — delivery ETA: whenever you tap Done.',
 ]
 
 const UPCOMING_LINES = [

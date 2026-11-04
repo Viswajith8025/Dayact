@@ -1,4 +1,8 @@
-import { followUpTone, PUSH_TITLE, pushNotificationBody } from "../_shared/followUpCopy.ts"
+import {
+  followUpTone,
+  pushNotificationBody,
+  pushNotificationTitle,
+} from "../_shared/followUpCopy.ts"
 import { createClient } from "npm:@supabase/supabase-js@2.49.1"
 import webpush from "npm:web-push@3.6.7"
 
@@ -76,6 +80,7 @@ Deno.serve(async (req) => {
 
   for (const activity of (activities ?? []) as ActivityRow[]) {
     const tone = followUpTone(activity.follow_up_on, today)
+    const title = pushNotificationTitle(tone, activity.id)
     const body = pushNotificationBody(tone, activity.title, activity.id, activity.follow_up_on)
 
     const { data: subs, error: subError } = await supabase
@@ -92,7 +97,7 @@ Deno.serve(async (req) => {
             endpoint: sub.endpoint,
             keys: { p256dh: sub.p256dh, auth: sub.auth },
           },
-          JSON.stringify({ title: PUSH_TITLE, body, url: "/followups" }),
+          JSON.stringify({ title, body, url: "/followups" }),
         )
         sent += 1
       } catch {

@@ -1027,6 +1027,40 @@ button,
   font-weight: 600;
 }
 
+.date-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--space-1);
+}
+
+.date-calendar-weekday {
+  text-align: center;
+  padding: var(--space-1) 0;
+}
+
+.date-calendar-day {
+  aspect-ratio: 1;
+  border-radius: var(--radius-control);
+  border: 1px solid transparent;
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.date-calendar-day--muted {
+  color: var(--color-text-tertiary);
+}
+
+.date-calendar-day--today {
+  border-color: var(--color-accent);
+}
+
+.date-calendar-day--selected {
+  background: var(--color-accent);
+  color: var(--color-accent-foreground);
+  font-weight: 600;
+}
+
 .heatmap-grid {
   display: grid;
   gap: var(--space-1);

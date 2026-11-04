@@ -1,11 +1,13 @@
 import { format, parseISO } from 'date-fns'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../lib/auth'
+import { PROFILE_UPDATED_EVENT } from '../components/ProfileSheet'
 import {
   ACHIEVEMENT_DONE_TARGETS,
   COUNT_BASED_ACHIEVEMENTS,
   computeWeeklyScore,
   countDoneActivities,
+  getMyProfile,
   getTeammateProfile,
   listAchievementCatalog,
   listActivitiesInRange,
@@ -16,6 +18,7 @@ import {
   type AchievementDefinition,
   type ActivityWithOwner,
 } from '../lib/activities'
+import { partnerDisplayName } from '../lib/partnerLabel'
 
 type ViewMode = 'you' | 'friend'
 
@@ -46,6 +49,7 @@ export function AchievementsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [moodInsights, setMoodInsights] = useState<{ title: string; avg: number; count: number }[]>([])
+  const [partnerNickname, setPartnerNickname] = useState<string | null>(null)
 
   const subjectId = view === 'you' ? user?.id : friend?.id
 
@@ -98,6 +102,20 @@ export function AchievementsPage() {
     return () => {
       active = false
     }
+  }, [user])
+
+  useEffect(() => {
+    if (!user) return
+    void getMyProfile(user.id).then((result) => {
+      if (result.data) setPartnerNickname(result.data.partner_nickname ?? null)
+    })
+    const onProfile = () => {
+      void getMyProfile(user!.id).then((result) => {
+        if (result.data) setPartnerNickname(result.data.partner_nickname ?? null)
+      })
+    }
+    window.addEventListener(PROFILE_UPDATED_EVENT, onProfile)
+    return () => window.removeEventListener(PROFILE_UPDATED_EVENT, onProfile)
   }, [user])
 
   useEffect(() => {
@@ -171,9 +189,11 @@ export function AchievementsPage() {
   }, [friend, weekActivities, weekFollowups, weekStart, weekEnd])
 
   const friendLabel = useMemo(() => {
-    const name = friend?.display_name.trim()
-    return name || 'Teammate'
-  }, [friend])
+    return partnerDisplayName({
+      myPartnerNickname: partnerNickname,
+      theirDisplayName: friend?.display_name,
+    })
+  }, [friend, partnerNickname])
 
   if (loading) {
     return (
@@ -196,7 +216,7 @@ export function AchievementsPage() {
   }
 
   return (
-    <section className="space-y-[var(--space-section)]">
+    <section className="space-y-[var(--space-section)] pb-[var(--space-8)] md:pb-0">
       <header className="space-y-[var(--space-4)]">
         <h1 className="typo-large-title text-[var(--color-text)]">Achievements</h1>
         <div ref={titleSentinelRef} className="h-px w-full" aria-hidden />

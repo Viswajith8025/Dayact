@@ -8,6 +8,7 @@ import {
   isValidAvatarEmoji,
   updateAvatarEmoji,
   updateDisplayName,
+  updatePartnerNickname,
 } from '../lib/activities'
 import {
   getPushSubscriptionState,
@@ -29,6 +30,7 @@ type ProfileSheetProps = {
 export function ProfileSheet({ open, onClose }: ProfileSheetProps) {
   const { user } = useAuth()
   const [displayName, setDisplayName] = useState('')
+  const [partnerNickname, setPartnerNickname] = useState('')
   const [avatarEmoji, setAvatarEmoji] = useState('')
   const [timezone, setTimezone] = useState('UTC')
   const [pushState, setPushState] = useState<'unsupported' | 'denied' | 'subscribed' | 'off'>('off')
@@ -42,6 +44,7 @@ export function ProfileSheet({ open, onClose }: ProfileSheetProps) {
     void getMyProfile(user.id).then((result) => {
       if (result.data) {
         setDisplayName(result.data.display_name)
+        setPartnerNickname(result.data.partner_nickname ?? '')
         setAvatarEmoji(result.data.avatar_emoji ?? '')
         setTimezone(result.data.timezone || detectTimezone())
       }
@@ -91,6 +94,12 @@ export function ProfileSheet({ open, onClose }: ProfileSheetProps) {
     if (emojiResult.error) {
       setSaving(false)
       setError(emojiResult.error)
+      return
+    }
+    const nickResult = await updatePartnerNickname(user.id, partnerNickname.trim() || null)
+    if (nickResult.error) {
+      setSaving(false)
+      setError(nickResult.error)
       return
     }
     const tzResult = await updateProfileTimezone(user.id, timezone.trim() || detectTimezone())
@@ -146,7 +155,23 @@ export function ProfileSheet({ open, onClose }: ProfileSheetProps) {
             value={displayName}
             maxLength={80}
             onChange={(e) => setDisplayName(e.target.value)}
+            aria-describedby="profile-display-name-hint"
           />
+          <p id="profile-display-name-hint" className="typo-footnote text-[var(--color-text-muted)]">
+            Your name others see on shared tasks.
+          </p>
+
+          <Input
+            label="Nickname for your partner"
+            name="partner_nickname"
+            value={partnerNickname}
+            maxLength={40}
+            onChange={(e) => setPartnerNickname(e.target.value)}
+            aria-describedby="profile-partner-nickname-hint"
+          />
+          <p id="profile-partner-nickname-hint" className="typo-footnote text-[var(--color-text-muted)]">
+            Shown on your device instead of their display name.
+          </p>
 
           <div className="space-y-[var(--space-2)]">
             <span className="typo-footnote text-[var(--color-text-muted)]">Avatar emoji</span>
@@ -185,7 +210,11 @@ export function ProfileSheet({ open, onClose }: ProfileSheetProps) {
           </p>
 
           <div className="space-y-[var(--space-2)]">
-            <p className="typo-subhead text-[var(--color-text)]">Follow-up reminders</p>
+            <p className="typo-subhead text-[var(--color-text)]">Push reminders</p>
+            <p className="typo-footnote text-[var(--color-text-muted)]">
+              Partner pokes, overdue follow-ups, and evening nudges use the same notifications. Turn
+              them on here so nothing gets stuck in silent mode.
+            </p>
             {isPushConfigured() ? (
               <>
                 <Button
@@ -195,11 +224,15 @@ export function ProfileSheet({ open, onClose }: ProfileSheetProps) {
                   disabled={pushState === 'unsupported' || pushState === 'denied'}
                   onClick={() => void togglePush()}
                 >
-                  {pushState === 'subscribed' ? 'Turn off notifications' : 'Enable reminders'}
+                  {pushState === 'subscribed' ? 'Turn off notifications' : 'Allow notifications'}
                 </Button>
                 {pushState === 'denied' ? (
                   <p className="typo-footnote text-[var(--color-text-muted)]">
-                    Notifications are blocked in browser settings.
+                    Blocked in browser settings — allow notifications for this site, then try again.
+                  </p>
+                ) : pushState === 'subscribed' ? (
+                  <p className="typo-footnote text-[var(--color-text-muted)]">
+                    On — your partner’s Remind taps and due follow-ups can reach you.
                   </p>
                 ) : null}
               </>
