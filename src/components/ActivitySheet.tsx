@@ -39,6 +39,7 @@ export function ActivitySheet({
   const [suggestError, setSuggestError] = useState<string | null>(null)
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [suggestSlow, setSuggestSlow] = useState(false)
+  const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -52,6 +53,7 @@ export function ActivitySheet({
     setSuggestError(null)
     setSuggestions([])
     setSuggestSlow(false)
+    setDiscardConfirmOpen(false)
   }, [open, initial, defaultPlannedFor])
 
   useEffect(() => {
@@ -66,14 +68,17 @@ export function ActivitySheet({
   useEffect(() => {
     if (!open) return
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault()
-        requestClose()
+      if (event.key !== 'Escape') return
+      event.preventDefault()
+      if (discardConfirmOpen) {
+        setDiscardConfirmOpen(false)
+        return
       }
+      requestClose()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [open, title, notes, plannedFor, followUpOn, initial, defaultPlannedFor, onClose])
+  }, [open, discardConfirmOpen, title, notes, plannedFor, followUpOn, initial, defaultPlannedFor, onClose])
 
   if (!open) return null
 
@@ -91,7 +96,15 @@ export function ActivitySheet({
   }
 
   function requestClose() {
-    if (isDirty() && !window.confirm('Discard your changes?')) return
+    if (isDirty()) {
+      setDiscardConfirmOpen(true)
+      return
+    }
+    onClose()
+  }
+
+  function confirmDiscard() {
+    setDiscardConfirmOpen(false)
     onClose()
   }
 
@@ -259,6 +272,41 @@ export function ActivitySheet({
           </Button>
         </div>
       </form>
+      {discardConfirmOpen ? (
+        <div
+          className="fixed inset-0 z-[60] flex items-end justify-center bg-black/45 p-[var(--space-page)] pb-[max(var(--space-page),env(safe-area-inset-bottom))] md:items-center"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="discard-sheet-title"
+          onClick={() => setDiscardConfirmOpen(false)}
+        >
+          <div
+            className="sheet-panel w-full max-w-sm space-y-[var(--space-5)] alert-panel-pop"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 id="discard-sheet-title" className="typo-title text-[var(--color-text)]">
+              Discard changes?
+            </h2>
+            <p className="typo-subhead text-[var(--color-text-muted)]">
+              Your edits won&apos;t be saved.
+            </p>
+            <div className="flex flex-col gap-[var(--space-3)] sm:flex-row">
+              <Button
+                type="button"
+                variant="secondary"
+                sheet
+                className="sm:flex-1"
+                onClick={() => setDiscardConfirmOpen(false)}
+              >
+                Keep editing
+              </Button>
+              <Button type="button" variant="destructive" sheet className="sm:flex-1" onClick={confirmDiscard}>
+                Discard
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
     </SheetPortal>
   )

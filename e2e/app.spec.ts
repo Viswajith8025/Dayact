@@ -1,9 +1,31 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 
 const email = process.env.DAYACT_TEST_EMAIL
 const password = process.env.DAYACT_TEST_PASSWORD
 
+async function waitForActivityDelete(page: Page) {
+  await page.waitForResponse(
+    (response) =>
+      response.url().includes('/rest/v1/activities') &&
+      response.request().method() === 'DELETE' &&
+      response.ok(),
+    { timeout: 20_000 },
+  )
+}
+
+async function deleteActivityRow(page: Page, title: string) {
+  const row = page.getByRole('listitem').filter({ hasText: title })
+  await row.getByRole('button', { name: 'Activity actions' }).click()
+  await page.getByRole('menu').getByRole('menuitem', { name: 'Delete' }).click()
+  const deleteDone = waitForActivityDelete(page)
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Delete' }).click()
+  await deleteDone
+  await expect(page.getByText(title)).toHaveCount(0, { timeout: 15_000 })
+}
+
 test.describe('signed-in flows', () => {
+  test.describe.configure({ timeout: 60_000 })
+
   test.beforeEach(async ({ page }) => {
     test.skip(!email || !password, 'Set DAYACT_TEST_EMAIL and DAYACT_TEST_PASSWORD in .env')
 
@@ -29,6 +51,16 @@ test.describe('signed-in flows', () => {
     await expect(page.getByRole('dialog')).toBeVisible()
     await page.getByRole('button', { name: 'Save' }).click()
     await expect(page.getByRole('alert')).toContainText('Add a title')
+  })
+
+  test('dirty draft discard dialog keeps sheet open', async ({ page }) => {
+    await page.getByRole('button', { name: 'Add activity' }).click()
+    await page.getByRole('textbox', { name: 'Title' }).fill('[QA] draft test')
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('alertdialog')).toContainText('Discard changes')
+    await page.getByRole('button', { name: 'Keep editing' }).click()
+    await expect(page.getByRole('dialog')).toBeVisible()
+    await page.getByRole('button', { name: 'Cancel' }).click()
   })
 
   test('suggest titles shows friendly error on 502', async ({ page }) => {
@@ -86,16 +118,14 @@ test.describe('signed-in flows', () => {
     await page.getByRole('button', { name: 'Save' }).click()
     await expect(page.getByText(title)).toBeVisible()
 
-    await page.getByRole('listitem').filter({ hasText: title }).getByRole('button', { name: 'Activity actions' }).click()
+    const row = page.getByRole('listitem').filter({ hasText: title })
+    await row.getByRole('button', { name: 'Activity actions' }).click()
     await expect(page.getByRole('menu')).toBeVisible()
-    await page.getByRole('menuitem', { name: 'Edit' }).click()
+    await page.getByRole('menu').getByRole('menuitem', { name: 'Edit' }).click()
     await expect(page.getByRole('dialog')).toBeVisible()
     await page.getByRole('button', { name: 'Cancel' }).click()
 
-    await page.getByRole('listitem').filter({ hasText: title }).getByRole('button', { name: 'Activity actions' }).click()
-    await page.getByRole('menuitem', { name: 'Delete' }).click()
-    await page.getByRole('button', { name: 'Delete' }).click()
-    await expect(page.getByText(title)).toHaveCount(0)
+    await deleteActivityRow(page, title)
   })
 
   test('delete confirmation closes on Escape', async ({ page }) => {
@@ -105,15 +135,13 @@ test.describe('signed-in flows', () => {
     await page.getByRole('button', { name: 'Save' }).click()
     await expect(page.getByText(title)).toBeVisible()
 
-    await page.getByRole('listitem').filter({ hasText: title }).getByRole('button', { name: 'Activity actions' }).click()
-    await page.getByRole('menuitem', { name: 'Delete' }).click()
+    const row = page.getByRole('listitem').filter({ hasText: title })
+    await row.getByRole('button', { name: 'Activity actions' }).click()
+    await page.getByRole('menu').getByRole('menuitem', { name: 'Delete' }).click()
     await expect(page.getByRole('alertdialog')).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(page.getByRole('alertdialog')).toHaveCount(0)
 
-    await page.getByRole('listitem').filter({ hasText: title }).getByRole('button', { name: 'Activity actions' }).click()
-    await page.getByRole('menuitem', { name: 'Delete' }).click()
-    await page.getByRole('button', { name: 'Delete' }).click()
-    await expect(page.getByText(title)).toHaveCount(0)
+    await deleteActivityRow(page, title)
   })
 })
