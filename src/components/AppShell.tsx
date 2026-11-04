@@ -12,6 +12,7 @@ import { useAuth } from '../lib/auth'
 import {
   ACTIVITIES_CHANGED_EVENT,
   countOwnFollowUpBadge,
+  ensureDefaultPartnerLink,
 } from '../lib/activities'
 import { signOut } from '../lib/auth'
 import { APP_VERSION } from '../lib/version'
@@ -202,6 +203,11 @@ export function AppShell() {
       }
       prevBadgeRef.current = next
     }
+  }, [user])
+
+  useEffect(() => {
+    if (!user) return
+    void ensureDefaultPartnerLink()
   }, [user])
 
   useEffect(() => {

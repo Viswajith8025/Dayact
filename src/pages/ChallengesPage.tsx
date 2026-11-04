@@ -71,11 +71,16 @@ export function ChallengesPage() {
 
   async function handleCreate() {
     if (!user || creating) return
+    const trimmed = title.trim()
+    if (!trimmed) {
+      setError('Add a challenge title.')
+      return
+    }
     setCreating(true)
     setError(null)
     const result = await createChallenge({
       userId: user.id,
-      title: title || '[QA] Challenge',
+      title: trimmed,
       targetCount: target,
       durationDays: days,
       startDate: localDateString(),

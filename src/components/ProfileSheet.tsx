@@ -4,12 +4,15 @@ import { Input } from './Input'
 import { SheetPortal } from './SheetPortal'
 import { useAuth } from '../lib/auth'
 import {
+  ensureDefaultPartnerLink,
   getMyProfile,
+  getTeammateProfile,
   isValidAvatarEmoji,
   updateAvatarEmoji,
   updateDisplayName,
   updatePartnerNickname,
 } from '../lib/activities'
+import { partnerDisplayName } from '../lib/partnerLabel'
 import {
   getPushSubscriptionState,
   isPushConfigured,
@@ -37,10 +40,25 @@ export function ProfileSheet({ open, onClose }: ProfileSheetProps) {
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [pushBusy, setPushBusy] = useState(false)
+  const [linkedPartnerName, setLinkedPartnerName] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open || !user) return
     setError(null)
+    void ensureDefaultPartnerLink().then(() => {
+      void getTeammateProfile(user.id).then((result) => {
+        if (result.data) {
+          setLinkedPartnerName(
+            partnerDisplayName({
+              myPartnerNickname: null,
+              theirDisplayName: result.data.display_name,
+            }),
+          )
+        } else {
+          setLinkedPartnerName(null)
+        }
+      })
+    })
     void getMyProfile(user.id).then((result) => {
       if (result.data) {
         setDisplayName(result.data.display_name)
@@ -171,6 +189,7 @@ export function ProfileSheet({ open, onClose }: ProfileSheetProps) {
           />
           <p id="profile-partner-nickname-hint" className="typo-footnote text-[var(--color-text-muted)]">
             Shown on your device instead of their display name.
+            {linkedPartnerName ? ` Linked account: ${linkedPartnerName}.` : ''}
           </p>
 
           <div className="space-y-[var(--space-2)]">

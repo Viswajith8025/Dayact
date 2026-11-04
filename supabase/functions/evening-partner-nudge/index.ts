@@ -67,8 +67,17 @@ Deno.serve(async (req) => {
 
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("id,timezone,last_evening_nudge_date,display_name")
+    .select("id,timezone,last_evening_nudge_date,display_name,partner_user_id,is_test_account")
   const profileById = new Map((profiles ?? []).map((p: { id: string }) => [p.id, p]))
+
+  function resolvePartnerId(profile: { id: string; partner_user_id?: string | null }) {
+    if (profile.partner_user_id) return profile.partner_user_id
+    const fallback = (profiles ?? []).find(
+      (p: { id: string; is_test_account?: boolean }) =>
+        p.id !== profile.id && !p.is_test_account,
+    ) as { id: string } | undefined
+    return fallback?.id ?? null
+  }
 
   const { data: subs } = await supabase.from("push_subscriptions").select("user_id,endpoint,p256dh,auth")
 
@@ -85,10 +94,12 @@ Deno.serve(async (req) => {
     const { date: localDate, hour } = localParts(tz, now)
     if (hour !== 21) continue
     if (profile.last_evening_nudge_date === localDate) continue
+    if ((profile as { is_test_account?: boolean }).is_test_account) continue
 
-    const partner = (profiles ?? []).find((p: { id: string }) => p.id !== profile.id) as
-      | { id: string }
-      | undefined
+    const partnerId = resolvePartnerId(profile as { id: string; partner_user_id?: string | null })
+    if (!partnerId) continue
+
+    const partner = profileById.get(partnerId) as { id: string } | undefined
     if (!partner) continue
 
     const { count: myDone } = await supabase

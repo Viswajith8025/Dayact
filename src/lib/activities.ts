@@ -814,13 +814,20 @@ export async function countDoneActivities(userId: string): Promise<Result<number
 }
 
 export async function getTeammateProfile(
-  currentUserId: string,
+  _currentUserId: string,
 ): Promise<Result<{ id: string; display_name: string; avatar_emoji: string | null } | null>> {
+  const { data: partnerId, error: rpcError } = await supabase.rpc('partner_id')
+  if (rpcError) {
+    return { data: null, error: rpcError.message }
+  }
+  if (!partnerId) {
+    return { data: null, error: null }
+  }
+
   const { data, error } = await supabase
     .from('profiles')
     .select(PROFILE_COLUMNS)
-    .neq('id', currentUserId)
-    .limit(1)
+    .eq('id', partnerId)
     .maybeSingle()
 
   if (error) {
@@ -839,6 +846,49 @@ export async function getTeammateProfile(
     },
     error: null,
   }
+}
+
+export type PartnerCandidate = {
+  id: string
+  display_name: string
+  avatar_emoji: string | null
+}
+
+export async function listPartnerCandidates(): Promise<Result<PartnerCandidate[]>> {
+  const { data, error } = await supabase.rpc('list_partner_candidates')
+  if (error) {
+    return { data: null, error: error.message }
+  }
+  return { data: (data ?? []) as PartnerCandidate[], error: null }
+}
+
+export async function ensureDefaultPartnerLink(): Promise<Result<null>> {
+  const candidates = await listPartnerCandidates()
+  if (candidates.error) {
+    return { data: null, error: candidates.error }
+  }
+  if (candidates.data?.length !== 1) {
+    return { data: null, error: null }
+  }
+
+  const only = candidates.data[0]
+  const { data: linked, error: rpcError } = await supabase.rpc('partner_id')
+  if (rpcError) {
+    return { data: null, error: rpcError.message }
+  }
+  if (linked === only.id) {
+    return { data: null, error: null }
+  }
+
+  return setPartner(only.id)
+}
+
+export async function setPartner(partnerId: string): Promise<Result<null>> {
+  const { error } = await supabase.rpc('set_partner', { p_partner_id: partnerId })
+  if (error) {
+    return { data: null, error: error.message }
+  }
+  return { data: null, error: null }
 }
 
 export function weekRangeLocal(reference: Date = new Date()): { from: string; to: string } {
