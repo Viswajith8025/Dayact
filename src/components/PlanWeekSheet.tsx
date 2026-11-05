@@ -92,9 +92,15 @@ export function PlanWeekSheet({ open, onClose }: PlanWeekSheetProps) {
           <p className="typo-subhead text-[var(--color-text-muted)]">
             Uses your last 30 days to suggest activities from tomorrow through the next week.
           </p>
-          <Button type="button" loading={loading} onClick={() => void runSuggest()}>
-            Generate plan
-          </Button>
+          {error ? (
+            <Button type="button" loading={loading} onClick={() => void runSuggest()}>
+              Retry
+            </Button>
+          ) : (
+            <Button type="button" loading={loading} onClick={() => void runSuggest()}>
+              Generate plan
+            </Button>
+          )}
           {slow && loading ? (
             <p role="status" className="typo-footnote text-[var(--color-text-muted)]">
               Still working…

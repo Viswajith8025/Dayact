@@ -102,9 +102,9 @@ function SessionFooter({
   async function handleSignOut() {
     if (signingOut) return
     setSigningOut(true)
-    navigate('/login', { replace: true })
     try {
       await signOut()
+      navigate('/login', { replace: true })
     } finally {
       setSigningOut(false)
     }
@@ -299,7 +299,8 @@ export function AppShell() {
         {mobileMenuOpen ? (
           <SheetPortal>
             <div
-              className="sheet-backdrop md:hidden"
+              className="sheet-backdrop menu-sheet md:hidden"
+              style={{ top: 'calc(env(safe-area-inset-top) + 3.25rem)' }}
               role="presentation"
               onClick={(event) => {
                 if (event.target === event.currentTarget) setMobileMenuOpen(false)
@@ -332,13 +333,15 @@ export function AppShell() {
           </ConnectionGate>
         </main>
 
-        <nav
-          className="glass-bar fixed inset-x-0 bottom-0 z-20 flex px-[var(--space-2)] pb-[calc(env(safe-area-inset-bottom)+var(--space-6))] md:hidden"
-          style={{ minHeight: 'calc(var(--nav-height) + env(safe-area-inset-bottom) + var(--space-6))' }}
-          aria-label="Main"
-        >
-          <AppNav layout="tabs" followUpBadge={followUpBadge} badgePop={badgePop} />
-        </nav>
+        {mobileMenuOpen ? null : (
+          <nav
+            className="glass-bar fixed inset-x-0 bottom-0 z-20 flex px-[var(--space-2)] pb-[calc(env(safe-area-inset-bottom)+var(--space-6))] md:hidden"
+            style={{ minHeight: 'calc(var(--nav-height) + env(safe-area-inset-bottom) + var(--space-6))' }}
+            aria-label="Main"
+          >
+            <AppNav layout="tabs" followUpBadge={followUpBadge} badgePop={badgePop} />
+          </nav>
+        )}
         <InstallPromptBar anchor="top" />
       </div>
     </div>

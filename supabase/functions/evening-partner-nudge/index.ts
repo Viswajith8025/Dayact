@@ -70,13 +70,8 @@ Deno.serve(async (req) => {
     .select("id,timezone,last_evening_nudge_date,display_name,partner_user_id,is_test_account")
   const profileById = new Map((profiles ?? []).map((p: { id: string }) => [p.id, p]))
 
-  function resolvePartnerId(profile: { id: string; partner_user_id?: string | null }) {
-    if (profile.partner_user_id) return profile.partner_user_id
-    const fallback = (profiles ?? []).find(
-      (p: { id: string; is_test_account?: boolean }) =>
-        p.id !== profile.id && !p.is_test_account,
-    ) as { id: string } | undefined
-    return fallback?.id ?? null
+  function resolvePartnerId(profile: { partner_user_id?: string | null }) {
+    return profile.partner_user_id ?? null
   }
 
   const { data: subs } = await supabase.from("push_subscriptions").select("user_id,endpoint,p256dh,auth")

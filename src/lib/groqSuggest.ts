@@ -22,7 +22,18 @@ async function suggestViaDevProxy(body: object): Promise<SuggestResponse> {
 
 async function suggestViaEdge(body: object): Promise<SuggestResponse> {
   const { data, error } = await supabase.functions.invoke<SuggestResponse>('suggest-activity', { body })
-  if (error) return { error: error.message || 'Could not reach AI. Try again.' }
+  if (error) {
+    const context = (error as { context?: { json?: () => Promise<SuggestResponse> } }).context
+    if (context?.json) {
+      try {
+        const payload = await context.json()
+        if (payload?.error) return { error: payload.error }
+      } catch {
+        /* body already read */
+      }
+    }
+    return { error: error.message || 'Could not reach AI. Try again.' }
+  }
   return data ?? { error: 'No suggestions returned.' }
 }
 
@@ -40,7 +51,12 @@ export async function suggestPlanWeek(historyJson: string) {
   const result = import.meta.env.DEV
     ? await suggestViaDevProxy({ mode: 'plan_week', history: historyJson.slice(0, 12000) })
     : await suggestViaEdge({ mode: 'plan_week', history: historyJson.slice(0, 12000) })
-  if (result.error) return { data: null, error: friendlySuggestError(result.error) }
-  if (!result.days?.length) return { data: null, error: friendlySuggestError('No plan returned.') }
+  if (result.error) {
+    if (/not configured/i.test(result.error)) {
+      return { data: null, error: 'Suggestions unavailable right now. Try again later.' }
+    }
+    return { data: null, error: "Couldn't reach the planner. Try again in a minute." }
+  }
+  if (!result.days?.length) return { data: null, error: 'No plan returned.' }
   return { data: result.days, error: null }
 }

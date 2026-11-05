@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
-const GEMINI_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.8-flash']
+const GEMINI_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-2.5-flash']
 
 function suggestActivityDevProxy(apiKey: string | undefined) {
   return {
@@ -47,7 +47,8 @@ function suggestActivityDevProxy(apiKey: string | undefined) {
                   }),
                 })
                 if (!geminiRes.ok) {
-                  if ([404, 503, 429].includes(geminiRes.status)) continue
+                  lastError = `Gemini failed (${geminiRes.status})`
+                  if ([400, 404, 503, 429].includes(geminiRes.status)) continue
                   res.statusCode = 502
                   res.setHeader('Content-Type', 'application/json')
                   res.end(JSON.stringify({ error: `Gemini failed (${geminiRes.status})` }))

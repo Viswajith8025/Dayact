@@ -634,7 +634,7 @@ button,
 .sheet-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 50;
+  z-index: 80;
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -994,6 +994,15 @@ button,
 .week-score-chip--muted {
   color: var(--color-text-muted);
   font-weight: 500;
+}
+
+.menu-sheet {
+  z-index: 80;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.menu-sheet .sheet-panel {
+  background-color: var(--color-surface);
 }
 
 .menu-sheet-actions .btn,

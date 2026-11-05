@@ -58,6 +58,7 @@ test.describe('signed-in flows', () => {
 
   test.afterEach(async ({ page }) => {
     if (!email || !password) return
+    if (page.url().includes('/login')) return
     await cleanupQaActivities(page)
   })
 
@@ -76,14 +77,14 @@ test.describe('signed-in flows', () => {
   })
 
   test('add sheet validates empty title', async ({ page }) => {
-    await page.getByRole('button', { name: 'Add activity' }).click()
+    await page.getByRole('button', { name: 'Add activity' }).first().click()
     await expect(page.getByRole('dialog')).toBeVisible()
     await page.getByRole('button', { name: 'Save' }).click()
     await expect(page.getByRole('alert')).toContainText('Add a title')
   })
 
   test('dirty draft discard dialog keeps sheet open', async ({ page }) => {
-    await page.getByRole('button', { name: 'Add activity' }).click()
+    await page.getByRole('button', { name: 'Add activity' }).first().click()
     await page.getByRole('textbox', { name: 'Title' }).fill('[QA] draft test')
     await page.keyboard.press('Escape')
     await expect(page.getByRole('alertdialog')).toContainText('Discard changes')
@@ -107,7 +108,7 @@ test.describe('signed-in flows', () => {
 
   test('activity row menu opens Edit action', async ({ page }) => {
     const title = `[QA] menu-${Date.now()}`
-    await page.getByRole('button', { name: 'Add activity' }).click()
+    await page.getByRole('button', { name: 'Add activity' }).first().click()
     await page.getByRole('textbox', { name: 'Title' }).fill(title)
     await page.getByRole('button', { name: 'Save' }).click()
     await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 20_000 })
@@ -126,7 +127,7 @@ test.describe('signed-in flows', () => {
 
   test('delete confirmation closes on Escape', async ({ page }) => {
     const title = `[QA] delete-escape-${Date.now()}`
-    await page.getByRole('button', { name: 'Add activity' }).click()
+    await page.getByRole('button', { name: 'Add activity' }).first().click()
     await page.getByRole('textbox', { name: 'Title' }).fill(title)
     await page.getByRole('button', { name: 'Save' }).click()
     await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 20_000 })
@@ -150,6 +151,31 @@ test.describe('signed-in flows', () => {
     await expect(page.getByRole('heading', { name: 'Activity heatmap' })).toBeVisible({ timeout: 15_000 })
     await page.goto('/challenges')
     await expect(page.getByRole('heading', { name: 'Couple challenges' })).toBeVisible({ timeout: 15_000 })
+  })
+
+  test('menu at 500px keeps sign out on the sheet', async ({ page }) => {
+    await page.setViewportSize({ width: 500, height: 900 })
+    await page.getByRole('button', { name: 'Open menu' }).click()
+    const sheet = page.getByRole('dialog', { name: 'Menu' })
+    await expect(sheet).toBeVisible()
+    const signOut = page.getByRole('button', { name: 'Sign out' })
+    await expect(signOut).toBeVisible()
+    const box = await signOut.boundingBox()
+    expect(box).not.toBeNull()
+    expect(box!.y + box!.height).toBeLessThan(900)
+    const background = await sheet.evaluate((el) => getComputedStyle(el).backgroundColor)
+    expect(background).not.toBe('rgba(0, 0, 0, 0)')
+    await expect(page.getByRole('button', { name: 'Close menu' })).toBeVisible()
+  })
+
+  test('sign out stays on login', async ({ page }) => {
+    await page.setViewportSize({ width: 500, height: 900 })
+    await page.getByRole('button', { name: 'Open menu' }).click()
+    await page.getByRole('button', { name: 'Sign out' }).click()
+    await expect(page).toHaveURL(/\/login/)
+    await page.waitForTimeout(500)
+    await expect(page).toHaveURL(/\/login/)
+    await expect(page.getByRole('heading', { name: 'Today' })).toHaveCount(0)
   })
 
   test('weekly recap flag on today', async ({ page }) => {

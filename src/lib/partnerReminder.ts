@@ -1,8 +1,7 @@
 import { supabase } from './supabase'
+import type { ReminderSuccess } from './reminderNote'
 
-export type PartnerReminderResult =
-  | { ok: true; deduped?: boolean }
-  | { ok: false; error: string }
+export type PartnerReminderResult = ReminderSuccess | { ok: false; error: string }
 
 export async function sendPartnerReminder(activityId: string): Promise<PartnerReminderResult> {
   const { data: sessionData } = await supabase.auth.getSession()
@@ -32,7 +31,13 @@ export async function sendPartnerReminder(activityId: string): Promise<PartnerRe
     return { ok: false, error: 'No connection — check network and try again.' }
   }
 
-  type Payload = { ok?: boolean; deduped?: boolean; error?: string }
+  type Payload = {
+    ok?: boolean
+    deduped?: boolean
+    delivered?: number
+    subscriptions?: number
+    error?: string
+  }
   let payload: Payload = {}
   try {
     payload = (await response.json()) as Payload
@@ -51,5 +56,10 @@ export async function sendPartnerReminder(activityId: string): Promise<PartnerRe
     return { ok: false, error: payload.error }
   }
 
-  return { ok: true, deduped: payload.deduped }
+  return {
+    ok: true,
+    delivered: Number(payload.delivered ?? 0),
+    subscriptions: Number(payload.subscriptions ?? 0),
+    deduped: payload.deduped,
+  }
 }

@@ -24,6 +24,7 @@ import {
 } from '../lib/activities'
 import { partnerDisplayName } from '../lib/partnerLabel'
 import { sendPartnerReminder } from '../lib/partnerReminder'
+import { reminderNote } from '../lib/reminderNote'
 
 const groupLabels: Record<FollowUpGroup, string> = {
   overdue: 'Overdue',
@@ -56,6 +57,7 @@ function FollowUpRow({
 }: FollowUpRowProps) {
   const [remindBusy, setRemindBusy] = useState(false)
   const [remindNote, setRemindNote] = useState<string | null>(null)
+  const [remindLocked, setRemindLocked] = useState(false)
   const ownerLabel = isOwn ? activity.display_name : partnerLabel
   const witty = followUpWittyLine(
     followUpTone(activity.follow_up_on!, today),
@@ -127,14 +129,14 @@ function FollowUpRow({
                 type="button"
                 variant="accentOutline"
                 loading={remindBusy}
-                disabled={remindNote === 'Funny poke sent' || remindNote === 'Already poked today'}
+                disabled={remindLocked}
                 onClick={() => {
                   if (remindBusy) return
                   setRemindBusy(true)
                   void sendPartnerReminder(activity.id).then((result) => {
                     setRemindBusy(false)
-                    if (!result.ok) setRemindNote(result.error)
-                    else setRemindNote(result.deduped ? 'Already poked today' : 'Funny poke sent')
+                    setRemindNote(reminderNote(result, partnerLabel))
+                    setRemindLocked(result.ok && result.delivered > 0)
                   })
                 }}
               >

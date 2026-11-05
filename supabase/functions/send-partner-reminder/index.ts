@@ -100,24 +100,25 @@ async function handlePartnerReminder(req: Request): Promise<Response> {
   }
 
   const sentOn = new Date().toISOString().slice(0, 10)
-  const { error: dedupeErr } = await admin.from("partner_reminders").insert({
-    activity_id: activityId,
-    from_user_id: userData.user.id,
-    sent_on: sentOn,
-  })
+  const { data: subs } = await admin
+    .from("push_subscriptions")
+    .select("endpoint,p256dh,auth")
+    .eq("user_id", activity.user_id)
 
-  if (dedupeErr?.code === "23505") {
-    return new Response(JSON.stringify({ ok: true, deduped: true }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    })
-  }
+  const subscriptions = subs?.length ?? 0
+  const { data: existing } = await admin
+    .from("partner_reminders")
+    .select("delivered")
+    .eq("activity_id", activityId)
+    .eq("from_user_id", userData.user.id)
+    .eq("sent_on", sentOn)
+    .maybeSingle()
 
-  if (dedupeErr) {
-    return new Response(JSON.stringify({ error: dedupeErr.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    })
+  if (existing?.delivered) {
+    return new Response(
+      JSON.stringify({ ok: true, delivered: 1, subscriptions, deduped: true }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    )
   }
 
   const { data: senderProfile } = await admin
@@ -127,13 +128,9 @@ async function handlePartnerReminder(req: Request): Promise<Response> {
     .maybeSingle()
 
   const senderName = senderProfile?.display_name?.trim() || "Your partner"
+  let delivered = 0
 
-  const { data: subs } = await admin
-    .from("push_subscriptions")
-    .select("endpoint,p256dh,auth")
-    .eq("user_id", activity.user_id)
-
-  if (publicKey && privateKey && (subs?.length ?? 0) > 0) {
+  if (publicKey && privateKey && subscriptions > 0) {
     webpush.setVapidDetails(mailto, publicKey, privateKey)
     const { title, body: pushBody } = partnerPokePushCopy(
       senderName,
@@ -141,9 +138,7 @@ async function handlePartnerReminder(req: Request): Promise<Response> {
       activity.id,
       sentOn,
     )
-    const url = openFollowUp
-      ? "/followups"
-      : `/today?date=${activity.planned_for}`
+    const url = openFollowUp ? "/followups" : `/today?date=${activity.planned_for}`
 
     for (const sub of subs ?? []) {
       try {
@@ -151,13 +146,38 @@ async function handlePartnerReminder(req: Request): Promise<Response> {
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
           JSON.stringify({ title, body: pushBody, url }),
         )
+        delivered += 1
       } catch {
-        /* ignore stale subscription */
+        /* stale subscription */
       }
     }
   }
 
-  return new Response(JSON.stringify({ ok: true }), {
+  if (delivered > 0) {
+    if (existing) {
+      await admin
+        .from("partner_reminders")
+        .update({ delivered: true })
+        .eq("activity_id", activityId)
+        .eq("from_user_id", userData.user.id)
+        .eq("sent_on", sentOn)
+    } else {
+      const { error: insertErr } = await admin.from("partner_reminders").insert({
+        activity_id: activityId,
+        from_user_id: userData.user.id,
+        sent_on: sentOn,
+        delivered: true,
+      })
+      if (insertErr && insertErr.code !== "23505") {
+        return new Response(JSON.stringify({ error: insertErr.message }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        })
+      }
+    }
+  }
+
+  return new Response(JSON.stringify({ ok: true, delivered, subscriptions }), {
     status: 200,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   })

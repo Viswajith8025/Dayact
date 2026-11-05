@@ -1,4 +1,4 @@
-const GEMINI_MODELS = ["gemini-3.5-flash-lite", "gemini-3.8-flash"]
+const GEMINI_MODELS = ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-2.5-flash"]
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -31,7 +31,8 @@ async function fetchGemini(apiKey: string, system: string, userText: string) {
       }),
     })
     if (!res.ok) {
-      if (res.status === 404 || res.status === 503 || res.status === 429) continue
+      lastError = `Gemini failed (${res.status})`
+      if (res.status === 400 || res.status === 404 || res.status === 503 || res.status === 429) continue
       return { error: `Gemini failed (${res.status})` }
     }
     const json = await res.json()

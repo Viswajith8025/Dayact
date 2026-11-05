@@ -42,6 +42,7 @@ import {
 import { incrementChallengeProgress, decrementChallengeProgressForDone } from '../lib/challenges'
 import { partnerDisplayName } from '../lib/partnerLabel'
 import { sendPartnerReminder } from '../lib/partnerReminder'
+import { reminderNote } from '../lib/reminderNote'
 import { upsertReaction, subscribeReactions, type ReactionEmoji } from '../lib/reactions'
 
 function ListSkeleton() {
@@ -97,6 +98,7 @@ function ActivityRow({
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
   const [remindBusy, setRemindBusy] = useState(false)
   const [remindNote, setRemindNote] = useState<string | null>(null)
+  const [remindLocked, setRemindLocked] = useState(false)
   const menuBtnRef = useRef<HTMLButtonElement>(null)
   const isDone = activity.status === 'done'
   const isSkipped = activity.status === 'skipped'
@@ -186,14 +188,14 @@ function ActivityRow({
                 type="button"
                 variant="secondary"
                 loading={remindBusy}
-                disabled={remindNote === 'Funny poke sent' || remindNote === 'Already poked today'}
+                disabled={remindLocked}
                 onClick={() => {
                   if (remindBusy) return
                   setRemindBusy(true)
                   void sendPartnerReminder(activity.id).then((result) => {
                     setRemindBusy(false)
-                    if (!result.ok) setRemindNote(result.error)
-                    else setRemindNote(result.deduped ? 'Already poked today' : 'Funny poke sent')
+                    setRemindNote(reminderNote(result, partnerLabel))
+                    setRemindLocked(result.ok && result.delivered > 0)
                   })
                 }}
               >
