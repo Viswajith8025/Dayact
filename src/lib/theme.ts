@@ -35,7 +35,7 @@ export function applyThemePreference(preference: ThemePreference): void {
   const effective = resolveEffectiveTheme(preference)
   root.style.colorScheme = effective
   const meta = document.querySelector('meta[name="theme-color"]')
-  meta?.setAttribute('content', effective === 'dark' ? '#1e1e22' : '#f2f2f5')
+  meta?.setAttribute('content', effective === 'dark' ? '#141416' : '#f2f2f5')
 }
 
 export function persistPreference(preference: ThemePreference): void {

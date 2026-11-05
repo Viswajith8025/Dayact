@@ -2,7 +2,7 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react'
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   children: ReactNode
-  variant?: 'primary' | 'secondary' | 'tertiary' | 'destructive'
+  variant?: 'primary' | 'secondary' | 'tertiary' | 'destructive' | 'accentOutline'
   loading?: boolean
   sheet?: boolean
   icon?: boolean
@@ -24,6 +24,7 @@ export function Button({
     secondary: 'btn--secondary',
     tertiary: 'btn--tertiary',
     destructive: 'btn--destructive',
+    accentOutline: 'btn--accent-outline',
   }[variant]
 
   return (

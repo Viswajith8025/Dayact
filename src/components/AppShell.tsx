@@ -7,6 +7,7 @@ import { DayactBrand } from './DayactBrand'
 import { InstallHeaderPill, InstallMenuAction, InstallPromptBar } from './InstallPrompt'
 import { useInstall } from '../lib/install'
 import { ProfileSheet } from './ProfileSheet'
+import { SheetPortal } from './SheetPortal'
 import { ThemeToggle } from './ThemeToggle'
 import { useAuth } from '../lib/auth'
 import {
@@ -37,7 +38,7 @@ function navLinkClass(isActive: boolean, layout: 'sidebar' | 'tabs') {
 
   const state = isActive
     ? layout === 'tabs'
-      ? 'text-[var(--color-accent)] tab-nav-link--active'
+      ? 'text-[var(--color-accent)] font-semibold tab-nav-link--active'
       : 'bg-[var(--color-accent-tint)] text-[var(--color-accent)] font-semibold'
     : layout === 'tabs'
       ? ''
@@ -89,9 +90,11 @@ function AppNav({
 function SessionFooter({
   layout,
   onOpenProfile,
+  onCloseMenu,
 }: {
   layout: 'sidebar' | 'header-menu'
   onOpenProfile: () => void
+  onCloseMenu?: () => void
 }) {
   const navigate = useNavigate()
   const [signingOut, setSigningOut] = useState(false)
@@ -141,17 +144,17 @@ function SessionFooter({
   }
 
   return (
-    <div className="flex w-56 flex-col gap-[var(--space-3)] p-[var(--space-3)]">
+    <div className="menu-sheet-actions flex flex-col gap-[var(--space-3)]">
       <button type="button" className="btn btn--tertiary w-full justify-start" onClick={onOpenProfile}>
         Profile
       </button>
-      <NavLink to="/challenges" className="btn btn--tertiary w-full justify-start">
+      <NavLink to="/challenges" className="btn btn--tertiary w-full justify-start" onClick={onCloseMenu}>
         Challenges
       </NavLink>
-      <NavLink to="/heatmap" className="btn btn--tertiary w-full justify-start">
+      <NavLink to="/heatmap" className="btn btn--tertiary w-full justify-start" onClick={onCloseMenu}>
         Heatmap
       </NavLink>
-      <NavLink to="/recap?recap=1" className="btn btn--tertiary w-full justify-start">
+      <NavLink to="/recap?recap=1" className="btn btn--tertiary w-full justify-start" onClick={onCloseMenu}>
         Weekly recap
       </NavLink>
       <ThemeToggle />
@@ -224,6 +227,7 @@ export function AppShell() {
 
   useEffect(() => {
     setCompactTitle(false)
+    setMobileMenuOpen(false)
   }, [location.pathname])
 
   useEffect(() => {
@@ -250,35 +254,20 @@ export function AppShell() {
         <header className="glass-bar sticky top-0 z-20 flex items-center justify-between px-[var(--space-page)] py-[var(--space-2)] pt-[max(var(--space-2),env(safe-area-inset-top))] md:hidden">
           {compactTitle ? (
             <>
-              <div className={mobileMenuOpen ? 'relative z-30' : 'relative'}>
-                <button
-                  type="button"
-                  className="btn btn--icon btn--tertiary relative z-30"
-                  aria-expanded={mobileMenuOpen}
-                  aria-haspopup="true"
-                  aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
-                  onClick={() => setMobileMenuOpen((open) => !open)}
-                >
-                  {mobileMenuOpen ? (
-                    <X size={20} strokeWidth={1.75} aria-hidden />
-                  ) : (
-                    <Menu size={20} strokeWidth={1.75} aria-hidden />
-                  )}
-                </button>
+              <button
+                type="button"
+                className="btn btn--icon btn--tertiary"
+                aria-expanded={mobileMenuOpen}
+                aria-haspopup="dialog"
+                aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+                onClick={() => setMobileMenuOpen((open) => !open)}
+              >
                 {mobileMenuOpen ? (
-                  <>
-                    <button
-                      type="button"
-                      className="fixed inset-0 z-10 bg-transparent"
-                      aria-label="Close menu"
-                      onClick={() => setMobileMenuOpen(false)}
-                    />
-                    <div className="menu-popover menu-popover--motion absolute left-0 top-full z-20 mt-[var(--space-2)] w-56">
-                      <SessionFooter layout="header-menu" onOpenProfile={openProfile} />
-                    </div>
-                  </>
-                ) : null}
-              </div>
+                  <X size={20} strokeWidth={1.75} aria-hidden />
+                ) : (
+                  <Menu size={20} strokeWidth={1.75} aria-hidden />
+                )}
+              </button>
               <p className="typo-headline absolute left-1/2 -translate-x-1/2 text-[var(--color-text)]">
                 {pageTitle}
               </p>
@@ -289,12 +278,11 @@ export function AppShell() {
               <DayactBrand />
               <div className="flex items-center gap-[var(--space-2)]">
                 <InstallHeaderPill />
-                <div className={mobileMenuOpen ? 'relative z-30' : 'relative'}>
                 <button
                   type="button"
-                  className="btn btn--icon btn--tertiary relative z-30"
+                  className="btn btn--icon btn--tertiary"
                   aria-expanded={mobileMenuOpen}
-                  aria-haspopup="true"
+                  aria-haspopup="dialog"
                   aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
                   onClick={() => setMobileMenuOpen((open) => !open)}
                 >
@@ -304,24 +292,36 @@ export function AppShell() {
                     <Menu size={20} strokeWidth={1.75} aria-hidden />
                   )}
                 </button>
-                {mobileMenuOpen ? (
-                  <>
-                    <button
-                      type="button"
-                      className="fixed inset-0 z-10 bg-transparent"
-                      aria-label="Close menu"
-                      onClick={() => setMobileMenuOpen(false)}
-                    />
-                    <div className="menu-popover menu-popover--motion absolute right-0 top-full z-20 mt-[var(--space-2)] w-56">
-                      <SessionFooter layout="header-menu" onOpenProfile={openProfile} />
-                    </div>
-                  </>
-                ) : null}
-                </div>
               </div>
             </>
           )}
         </header>
+        {mobileMenuOpen ? (
+          <SheetPortal>
+            <div
+              className="sheet-backdrop md:hidden"
+              role="presentation"
+              onClick={(event) => {
+                if (event.target === event.currentTarget) setMobileMenuOpen(false)
+              }}
+            >
+              <div
+                className="sheet-panel max-w-[var(--content-max)]"
+                role="dialog"
+                aria-label="Menu"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div className="sheet-grabber" aria-hidden />
+                <p className="typo-headline mb-[var(--space-4)] text-[var(--color-text)]">Menu</p>
+                <SessionFooter
+                  layout="header-menu"
+                  onOpenProfile={openProfile}
+                  onCloseMenu={() => setMobileMenuOpen(false)}
+                />
+              </div>
+            </div>
+          </SheetPortal>
+        ) : null}
         <main
           className={`mx-auto w-full max-w-[var(--content-max)] flex-1 px-[var(--space-page)] pb-[calc(var(--nav-height)+env(safe-area-inset-bottom)+var(--space-6)+4rem)] pt-[var(--space-4)] md:pb-[var(--space-section)] md:pt-[var(--space-section)]${installBarVisible ? ' max-md:pt-[calc(var(--space-4)+3.25rem)]' : ''}`}
         >

@@ -221,7 +221,7 @@ export function AchievementsPage() {
         <h1 className="typo-large-title text-[var(--color-text)]">Achievements</h1>
         <div ref={titleSentinelRef} className="h-px w-full" aria-hidden />
 
-        <div className="segmented" role="tablist" aria-label="Achievement view">
+        <div className="segmented segmented--stretch w-full" role="tablist" aria-label="Achievement view">
           <button
             type="button"
             role="tab"
@@ -236,27 +236,39 @@ export function AchievementsPage() {
             role="tab"
             aria-selected={view === 'friend'}
             disabled={!friend}
-            className="segmented__item disabled:opacity-40"
+            className="segmented__item truncate disabled:opacity-40"
             onClick={() => setView('friend')}
           >
-            {friendLabel}
+            <span className="truncate">{friendLabel}</span>
           </button>
         </div>
       </header>
 
       {user && yourWeekScore ? (
-        <div className="week-duel-card space-y-[var(--space-2)]">
-          <h2 className="typo-headline text-[var(--color-text)]">This week</h2>
-          <p className="typo-subhead text-[var(--color-text-muted)]">
-            Honor-system points · done +10, perfect day +25, follow-up +5, overdue −5
-          </p>
-          <div className="flex flex-wrap items-baseline justify-between gap-[var(--space-3)]">
-            <p className="typo-title tabular-nums text-[var(--color-text)]">
+        <div className="week-duel-card space-y-[var(--space-3)]">
+          <div>
+            <h2 className="typo-headline text-[var(--color-text)]">This week</h2>
+            <p className="mt-[var(--space-1)] typo-footnote text-[var(--color-text-muted)]">
+              Honor-system points · done +10, perfect day +25, follow-up +5, overdue −5
+            </p>
+          </div>
+          <div className="flex gap-[var(--space-3)]">
+            <p
+              className={`week-score-chip ${
+                friendWeekScore && friendWeekScore.total > yourWeekScore.total
+                  ? 'week-score-chip--muted'
+                  : ''
+              }`}
+            >
               {(yourWeekScore.total > (friendWeekScore?.total ?? -1) ? '👑 ' : '') +
                 `You ${yourWeekScore.total}`}
             </p>
             {friend && friendWeekScore ? (
-              <p className="typo-title tabular-nums text-[var(--color-text-muted)]">
+              <p
+                className={`week-score-chip ${
+                  friendWeekScore.total > yourWeekScore.total ? '' : 'week-score-chip--muted'
+                }`}
+              >
                 {(friendWeekScore.total > yourWeekScore.total ? '👑 ' : '') +
                   `${friendLabel} ${friendWeekScore.total}`}
               </p>
@@ -304,13 +316,7 @@ export function AchievementsPage() {
                 <MedalIcon locked={!isEarned} />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-start justify-between gap-[var(--space-2)]">
-                    <p
-                      className={`typo-headline ${
-                        isEarned ? 'text-[var(--color-text)]' : 'text-[var(--color-text-muted)]'
-                      }`}
-                    >
-                      {item.title}
-                    </p>
+                    <p className="typo-headline text-[var(--color-text)]">{item.title}</p>
                     {isEarned ? (
                       <p className="typo-footnote tabular-nums text-[var(--color-text-muted)]">
                         {format(parseISO(earnedAt!), 'd MMM yyyy')}
@@ -321,9 +327,19 @@ export function AchievementsPage() {
                     {item.description}
                   </p>
                   {showProgress && target ? (
-                    <p className="mt-[var(--space-2)] typo-footnote tabular-nums text-[var(--color-text-muted)]">
-                      {Math.min(doneCount, target)} / {target} done
-                    </p>
+                    <>
+                      <p className="mt-[var(--space-2)] typo-footnote tabular-nums text-[var(--color-text-muted)]">
+                        {Math.min(doneCount, target)} / {target} done
+                      </p>
+                      <div className="day-progress__track mt-[var(--space-1)]">
+                        <div
+                          className="day-progress__fill"
+                          style={{
+                            width: `${Math.min(100, (Math.min(doneCount, target) / target) * 100)}%`,
+                          }}
+                        />
+                      </div>
+                    </>
                   ) : null}
                 </div>
               </div>

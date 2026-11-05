@@ -694,18 +694,18 @@ export function TodayPage() {
             <p className="typo-subhead text-[var(--color-text-muted)]">{headingDate}</p>
             <div ref={titleSentinelRef} className="h-px w-full" aria-hidden />
           </div>
-          <div className="flex flex-col gap-[var(--space-2)] sm:flex-row sm:flex-wrap">
+          <div className="flex flex-col gap-[var(--space-2)] max-md:flex-row">
             <Button
               type="button"
               variant="secondary"
-              className="w-full sm:w-auto"
+              className="w-full max-md:flex-1 sm:w-auto"
               onClick={() => setPlanWeekOpen(true)}
             >
               Plan my week
             </Button>
             <Button
               type="button"
-              className="w-full sm:w-auto"
+              className="w-full max-md:flex-1 sm:w-auto"
               onClick={() => {
                 setEditing(null)
                 setSheetOpen(true)
@@ -716,7 +716,7 @@ export function TodayPage() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-[var(--space-2)]">
+        <div className="date-nav-bar">
           <Button
             type="button"
             variant="tertiary"
@@ -730,6 +730,7 @@ export function TodayPage() {
             type="button"
             variant="tertiary"
             disabled={selectedDate === today}
+            className="flex-1 sm:flex-none"
             onClick={() => setDateInUrl(today)}
           >
             Today
@@ -746,7 +747,7 @@ export function TodayPage() {
           <Button
             type="button"
             variant="tertiary"
-            className="inline-flex min-w-0 items-center gap-[var(--space-2)] tabular-nums"
+            className="inline-flex min-w-0 flex-1 items-center justify-center gap-[var(--space-2)] tabular-nums sm:flex-none"
             aria-label="Jump to date"
             onClick={() => setCalendarOpen(true)}
           >
@@ -756,7 +757,7 @@ export function TodayPage() {
         </div>
 
         {user ? (
-          <div className="week-duel-card mb-[var(--space-4)] space-y-[var(--space-3)] border-b border-[var(--color-separator)] pb-[var(--space-4)]">
+          <div className="week-duel-card space-y-[var(--space-3)]">
             <JointStreakCard />
             {showRecap ? <WeeklyRecapCard forceShow={searchParams.get('recap') === '1'} /> : null}
             <DayProgressBar
@@ -806,8 +807,18 @@ export function TodayPage() {
       {loading ? (
         <ListSkeleton />
       ) : sorted.length === 0 ? (
-        <div className="empty-state-card">
+        <div className="empty-state-card space-y-[var(--space-4)]">
           <p>{emptyCopy}</p>
+          <Button
+            type="button"
+            className="mx-auto w-full max-w-xs"
+            onClick={() => {
+              setEditing(null)
+              setSheetOpen(true)
+            }}
+          >
+            Add activity
+          </Button>
         </div>
       ) : (
         <ul key={selectedDate} className="grouped-list motion-stagger">

@@ -65,7 +65,7 @@ function FollowUpRow({
 
   return (
     <li>
-      <div className={`grouped-row ${overdue ? 'border-l-2 border-[var(--color-accent)]' : ''}`}>
+      <div className={`grouped-row${overdue ? ' grouped-row--overdue' : ''}`}>
         <div
           className="partner-avatar"
           style={{ backgroundColor: userBadgeColor(activity.user_id) }}
@@ -80,12 +80,14 @@ function FollowUpRow({
               <p className="typo-body text-[var(--color-text)]">{activity.title}</p>
               <p
                 className={`typo-subhead tabular-nums ${
-                  overdue ? 'text-[var(--color-text)]' : 'text-[var(--color-text-muted)]'
+                  overdue ? 'text-[var(--color-danger)] font-medium' : 'text-[var(--color-text-muted)]'
                 }`}
               >
                 {formatFollowUpRelative(activity.follow_up_on!, today)}
               </p>
-              <p className="typo-footnote text-[var(--color-accent)]">{witty}</p>
+              <p className={`typo-footnote ${overdue ? 'text-[var(--color-text-muted)]' : 'text-[var(--color-accent)]'}`}>
+                {witty}
+              </p>
               {activity.reschedule_reason ? (
                 <p className="typo-footnote text-[var(--color-text-muted)]">
                   Last reason: {activity.reschedule_reason}
@@ -101,7 +103,7 @@ function FollowUpRow({
               <p className="typo-body text-[var(--color-text)]">{activity.title}</p>
               <p
                 className={`typo-subhead tabular-nums ${
-                  overdue ? 'text-[var(--color-text)]' : 'text-[var(--color-text-muted)]'
+                  overdue ? 'text-[var(--color-danger)] font-medium' : 'text-[var(--color-text-muted)]'
                 }`}
               >
                 {formatFollowUpRelative(activity.follow_up_on!, today)}
@@ -123,7 +125,7 @@ function FollowUpRow({
             <div className="flex flex-wrap items-center gap-[var(--space-2)]">
               <Button
                 type="button"
-                variant="secondary"
+                variant="accentOutline"
                 loading={remindBusy}
                 disabled={remindNote === 'Funny poke sent' || remindNote === 'Already poked today'}
                 onClick={() => {
@@ -322,7 +324,13 @@ export function FollowupsPage() {
             className="space-y-[var(--space-3)]"
             style={{ '--stagger-index': sectionIndex } as CSSProperties}
           >
-            <h2 className="typo-caption text-[var(--color-text-muted)] uppercase tracking-wide">
+            <h2
+              className={
+                groupKey === 'overdue'
+                  ? 'section-label section-label--danger'
+                  : 'section-label'
+              }
+            >
               {groupLabels[groupKey]}
             </h2>
             <ul className="grouped-list">
