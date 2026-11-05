@@ -19,12 +19,18 @@ Deno.serve(async (req) => {
   const mailto = Deno.env.get("VAPID_MAILTO") ?? "mailto:hello@dayact.app"
 
   if (!supabaseUrl || !serviceKey || !publicKey || !privateKey) {
-    return new Response(JSON.stringify({ error: "Missing env" }), { status: 500 })
+    return new Response(JSON.stringify({ error: "Missing env" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    })
   }
 
   const authHeader = req.headers.get("Authorization")
   if (!authHeader) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 })
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    })
   }
 
   const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
@@ -32,18 +38,27 @@ Deno.serve(async (req) => {
   })
   const { data: userData } = await userClient.auth.getUser()
   if (!userData.user) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 })
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    })
   }
 
-  const body = await req.json().catch(() => ({}))
-  const activityId = body.activityId as string
+  const payload = await req.json().catch(() => ({}))
+  const activityId = payload.activityId as string
   if (!activityId) {
-    return new Response(JSON.stringify({ error: "Bad request" }), { status: 400 })
+    return new Response(JSON.stringify({ error: "Bad request" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    })
   }
 
   const { data: partnerId, error: partnerErr } = await userClient.rpc("partner_id")
   if (partnerErr || !partnerId) {
-    return new Response(JSON.stringify({ error: "No partner" }), { status: 400 })
+    return new Response(JSON.stringify({ error: "No partner" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    })
   }
 
   const admin = createClient(supabaseUrl, serviceKey)
@@ -54,11 +69,17 @@ Deno.serve(async (req) => {
     .maybeSingle()
 
   if (!activity || activity.user_id !== partnerId) {
-    return new Response(JSON.stringify({ error: "Not allowed" }), { status: 403 })
+    return new Response(JSON.stringify({ error: "Not allowed" }), {
+      status: 403,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    })
   }
 
   if (activity.status === "done" || activity.status === "skipped") {
-    return new Response(JSON.stringify({ error: "Already finished" }), { status: 400 })
+    return new Response(JSON.stringify({ error: "Already finished" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    })
   }
 
   const sentOn = new Date().toISOString().slice(0, 10)
@@ -76,7 +97,10 @@ Deno.serve(async (req) => {
   }
 
   if (dedupeErr) {
-    return new Response(JSON.stringify({ error: dedupeErr.message }), { status: 500 })
+    return new Response(JSON.stringify({ error: dedupeErr.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    })
   }
 
   const { data: senderProfile } = await admin
@@ -93,7 +117,7 @@ Deno.serve(async (req) => {
     .eq("user_id", activity.user_id)
 
   webpush.setVapidDetails(mailto, publicKey, privateKey)
-  const { title, body } = partnerPokePushCopy(
+  const { title, body: pushBody } = partnerPokePushCopy(
     senderName,
     activity.title,
     activity.id,
@@ -105,7 +129,7 @@ Deno.serve(async (req) => {
     try {
       await webpush.sendNotification(
         { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-        JSON.stringify({ title, body, url }),
+        JSON.stringify({ title, body: pushBody, url }),
       )
     } catch {
       /* ignore */

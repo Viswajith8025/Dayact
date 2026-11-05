@@ -11,7 +11,11 @@ export async function sendPartnerReminder(activityId: string): Promise<PartnerRe
   )
 
   if (error) {
-    return { ok: false, error: error.message || 'Could not send reminder.' }
+    const msg = error.message || 'Could not send reminder.'
+    if (msg.includes('Edge Function')) {
+      return { ok: false, error: 'Reminder service is down — try again in a minute.' }
+    }
+    return { ok: false, error: msg }
   }
 
   if (data?.error) {
