@@ -12,14 +12,26 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders })
   }
 
+  try {
+    return await handlePartnerReminder(req)
+  } catch (err) {
+    console.error("send-partner-reminder", err)
+    return new Response(
+      JSON.stringify({ error: err instanceof Error ? err.message : "Server error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    )
+  }
+})
+
+async function handlePartnerReminder(req: Request): Promise<Response> {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
   const publicKey = Deno.env.get("VAPID_PUBLIC_KEY")
   const privateKey = Deno.env.get("VAPID_PRIVATE_KEY")
   const mailto = Deno.env.get("VAPID_MAILTO") ?? "mailto:hello@dayact.app"
 
-  if (!supabaseUrl || !serviceKey || !publicKey || !privateKey) {
-    return new Response(JSON.stringify({ error: "Missing env" }), {
+  if (!supabaseUrl || !serviceKey) {
+    return new Response(JSON.stringify({ error: "Missing server config" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     })
@@ -64,7 +76,7 @@ Deno.serve(async (req) => {
   const admin = createClient(supabaseUrl, serviceKey)
   const { data: activity } = await admin
     .from("activities")
-    .select("id,user_id,title,planned_for,status")
+    .select("id,user_id,title,planned_for,status,follow_up_on,follow_up_done")
     .eq("id", activityId)
     .maybeSingle()
 
@@ -75,7 +87,12 @@ Deno.serve(async (req) => {
     })
   }
 
-  if (activity.status === "done" || activity.status === "skipped") {
+  const openFollowUp = Boolean(activity.follow_up_on && !activity.follow_up_done)
+  const canRemind =
+    activity.status !== "skipped" &&
+    (activity.status !== "done" || openFollowUp)
+
+  if (!canRemind) {
     return new Response(JSON.stringify({ error: "Already finished" }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -116,23 +133,27 @@ Deno.serve(async (req) => {
     .select("endpoint,p256dh,auth")
     .eq("user_id", activity.user_id)
 
-  webpush.setVapidDetails(mailto, publicKey, privateKey)
-  const { title, body: pushBody } = partnerPokePushCopy(
-    senderName,
-    activity.title,
-    activity.id,
-    sentOn,
-  )
-  const url = `/today?date=${activity.planned_for}`
+  if (publicKey && privateKey && (subs?.length ?? 0) > 0) {
+    webpush.setVapidDetails(mailto, publicKey, privateKey)
+    const { title, body: pushBody } = partnerPokePushCopy(
+      senderName,
+      activity.title,
+      activity.id,
+      sentOn,
+    )
+    const url = openFollowUp
+      ? "/followups"
+      : `/today?date=${activity.planned_for}`
 
-  for (const sub of subs ?? []) {
-    try {
-      await webpush.sendNotification(
-        { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-        JSON.stringify({ title, body: pushBody, url }),
-      )
-    } catch {
-      /* ignore */
+    for (const sub of subs ?? []) {
+      try {
+        await webpush.sendNotification(
+          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+          JSON.stringify({ title, body: pushBody, url }),
+        )
+      } catch {
+        /* ignore stale subscription */
+      }
     }
   }
 
@@ -140,4 +161,4 @@ Deno.serve(async (req) => {
     status: 200,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   })
-})
+}
