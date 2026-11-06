@@ -2,6 +2,10 @@
   command = "npm run build"
   publish = "dist"
 
+  # Vite inlines these on purpose. They are publishable client keys, not server secrets.
+  [build.environment]
+    SECRETS_SCAN_OMIT_KEYS = "VITE_SUPABASE_ANON_KEY,VITE_VAPID_PUBLIC_KEY"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

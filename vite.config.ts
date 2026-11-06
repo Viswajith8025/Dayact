@@ -6,12 +6,15 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 const GEMINI_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-2.5-flash']
 
-function suggestActivityDevProxy(apiKey: string | undefined) {
+function suggestActivityDevProxy() {
   return {
     name: 'dayact-suggest-activity-dev-proxy',
+    apply: 'serve',
     configureServer(server) {
       server.middlewares.use('/api/suggest-activity', (req, res, next) => {
         if (req.method !== 'POST') return next()
+        // Read at request time so `vite build` never captures the key.
+        const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY
         if (!apiKey) {
           res.statusCode = 503
           res.setHeader('Content-Type', 'application/json')
@@ -88,18 +91,16 @@ function suggestActivityDevProxy(apiKey: string | undefined) {
 }
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '')
+  const env = loadEnv(mode, process.cwd(), 'VITE_')
   for (const [key, value] of Object.entries(env)) {
-    if (key.startsWith('VITE_')) {
-      process.env[key] = value
-    }
+    if (process.env[key] === undefined) process.env[key] = value
   }
 
   return {
     plugins: [
       react(),
       tailwindcss(),
-      suggestActivityDevProxy(env.GEMINI_API_KEY ?? env.GOOGLE_API_KEY),
+      suggestActivityDevProxy(),
       VitePWA({
         strategies: 'injectManifest',
         srcDir: 'src',
